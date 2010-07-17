@@ -22,7 +22,7 @@ def is_executable(command):
     """Checks if a given command is available.  Handy for dependency checks on external commands."""
     for path in os.environ['PATH'].split(':'):
         path = os.path.join(path, command)
-        if (os.access(path, os.X_OK)) and (not os.stat.isdir(path)):
+        if (os.access(path, os.X_OK)) and (not os.path.isdir(path)):
             return True
 
     return False
@@ -49,7 +49,7 @@ def execute(cmd, out=sys.stdout):
     status = s.wait()
 
     if status != 0:
-        print('err: utils.execute(): command exited with bad status.\ncmd = {0}\nexit status = {1})'.format(cmd, status), sys.stderr)
+        print('err: utils.execute(): command exited with bad status.\ncmd = {0}\nexit status = {1})'.format(cmd, status), file=sys.stderr)
         sys.exit(1)
 
     return None

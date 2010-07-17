@@ -18,7 +18,7 @@ import optparse
 import os
 import sys
 
-import Djvubind
+import Djvubind.utils
 
 if __name__ == '__main__':
     # Command line parsing
@@ -42,7 +42,7 @@ if __name__ == '__main__':
     deps = ['cpaldjvu', 'djvm', 'djvused', 'identify', 'minidjvu', 'tesseract']
     for dep in deps:
         if (not Djvubind.utils.is_executable(dep)):
-            print('err: __main__: external dependency ({0}) cannot be found'.format(dep), sys.stderr)
+            print('err: __main__: external dependency ({0}) cannot be found'.format(dep), file=sys.stderr)
             sys.exit(1)
 
     # Change working directory if necessary
