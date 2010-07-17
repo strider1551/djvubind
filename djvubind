@@ -18,12 +18,14 @@ import optparse
 import os
 import sys
 
+import Djvubind
+
 if __name__ == '__main__':
     # Command line parsing
-    usage = "usage: %prog [options]"
+    usage = "usage: %prog [options] directory"
     description = "djvubind is designed to facilitate creating high-quality djvu files, including positional ocr, metadata, and bookmarks."
     parser = optparse.OptionParser(usage, version='0.0.1', description=description)
-    parser.set_defaults(verbose=False, quiet=False,
+    parser.set_defaults(quiet=False,
                         front_cover='cover_front.tiff', back_cover='cover_back.tiff',
                         metadata='metadata', bookmarks='bookmarks')
     parser.add_option("--front_cover", dest="cover_front", help="Specifies an alternate front cover image.  By default, '%default' is used if present.")
@@ -31,8 +33,17 @@ if __name__ == '__main__':
     parser.add_option("--metadata", dest="metadata", help="Specifies an alternate metadata file.  By default, '%default' is used if present.")
     parser.add_option("--bookmarks", dest="bookmarks", help="Specifies an alternate bookmarks.  By default, '%default' is used if present.")
     parser.add_option("-q", "--quiet", action="store_true", dest="quiet")
-    parser.add_option("-v", "--verbose", action="store_true", dest="verbose")
     (options, args) = parser.parse_args(sys.argv)
+
+    if options.quiet:
+        sys.stdout = open('/dev/null', 'w')
+
+    # Dependency check
+    deps = ['cpaldjvu', 'djvm', 'djvused', 'identify', 'minidjvu', 'tesseract']
+    for dep in deps:
+        if (not Djvubind.utils.is_executable(dep)):
+            print('err: __main__: external dependency ({0}) cannot be found'.format(dep), sys.stderr)
+            sys.exit(1)
 
     # Change working directory if necessary
     if (len(args) > 2):
