@@ -18,15 +18,6 @@ import os
 import subprocess
 import sys
 
-def is_executable(command):
-    """Checks if a given command is available.  Handy for dependency checks on external commands."""
-    for path in os.environ['PATH'].split(':'):
-        path = os.path.join(path, command)
-        if (os.access(path, os.X_OK)) and (not os.path.isdir(path)):
-            return True
-
-    return False
-
 def color(text, color):
     """Change the text color by adding ANSI escape sequences."""
     colors = {}
@@ -42,14 +33,57 @@ def color(text, color):
 
     return text
 
-def execute(cmd, out=sys.stdout):
+def execute(cmd, out=sys.stdout, capture=False):
     """Execute a command line process."""
-    print('>>> {0}'.format(cmd), out)
-    s = subprocess.Popen(cmd, shell=True)
+    print('>>> {0}'.format(cmd), file=out)
+    if capture:
+        s = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+    else:
+        s = subprocess.Popen(cmd, shell=True)
     status = s.wait()
 
     if status != 0:
-        print('err: utils.execute(): command exited with bad status.\ncmd = {0}\nexit status = {1})'.format(cmd, status), file=sys.stderr)
+        print('err: utils.execute(): command exited with bad status.\ncmd = {0}\nexit status = {1}'.format(cmd, status), file=sys.stderr)
         sys.exit(1)
 
-    return None
+    if capture:
+        return s.stdout.read()
+    else:
+        return None
+
+def list_files(dir='.', filter=None, extension=None):
+    """Find all files in a given directory that match criteria."""
+    tmp = os.listdir(dir)
+    contents = []
+    for path in tmp:
+        if os.path.isfile(path):
+            contents.append(path)
+    contents.sort()
+
+    if filter is not None:
+        remove = []
+        for file in contents:
+            if filter not in file:
+                remove.append(file)
+        for file in remove:
+            contents.remove(file)
+
+    if extension is not None:
+        remove = []
+        for file in contents:
+            ext = file.split('.')[-1]
+            if extension != ext.lower():
+                remove.append(file)
+        for file in remove:
+            contents.remove(file)
+
+    return contents
+
+def is_executable(command):
+    """Checks if a given command is available.  Handy for dependency checks on external commands."""
+    for path in os.environ['PATH'].split(':'):
+        path = os.path.join(path, command)
+        if (os.access(path, os.X_OK)) and (not os.path.isdir(path)):
+            return True
+
+    return False
