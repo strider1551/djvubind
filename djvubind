@@ -97,7 +97,7 @@ if __name__ == '__main__':
     # Ocr
     if (not options.no_ocr):
         for page in book.pages:
-            handle = open('ocr.txt', 'w')
+            handle = open('ocr.txt', 'w', encoding="utf8")
             handle.write(page.text)
             handle.close()
             page_number = book.pages.index(page)+1
@@ -106,11 +106,13 @@ if __name__ == '__main__':
 
     # Insert front/back covers, metadata, and bookmarks
     if os.path.isfile(options.cover_front):
-        Djvubind.utils.execute('c44 "{0}" "{0}.djvu"'.format(options.cover_front))
+        dpi = int(Djvubind.utils.execute("identify -format '%x' {0} | awk '{{print $1}}'".format(options.cover_front), capture=True))
+        Djvubind.utils.execute('c44 -dpi {0} "{1}" "{1}.djvu"'.format(dpi, options.cover_front))
         Djvubind.utils.execute('djvm -i book.djvu "{0}.djvu" 1'.format(options.cover_front))
         os.remove('{0}.djvu'.format(options.cover_front))
     if os.path.isfile(options.cover_back):
-        Djvubind.utils.execute('c44 "{0}" "{0}.djvu"'.format(options.cover_back))
+        dpi = int(Djvubind.utils.execute("identify -format '%x' {0} | awk '{{print $1}}'".format(options.cover_back), capture=True))
+        Djvubind.utils.execute('c44 -dpi {0} "{1}" "{1}.djvu"'.format(dpi, options.cover_back))
         Djvubind.utils.execute('djvm -i book.djvu "{0}.djvu" -1'.format(options.cover_back))
         os.remove('{0}.djvu'.format(options.cover_back))
     if os.path.isfile(options.metadata):

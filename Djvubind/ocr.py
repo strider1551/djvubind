@@ -29,17 +29,19 @@ def parse_box(boxfile):
     if not os.path.isfile(boxfile):
         print('err: ocr.parse_box(): File does not exist: "{0}"'.format(boxfile), file=sys.stderr)
         sys.exit(1)
-    handle = open(boxfile, 'r')
-    text = handle.readlines()
-    handle.close()
+    handle = open(boxfile, 'r', encoding="utf8")
+    #text = handle.readlines()
+    #handle.close()
 
     data = []
-    for line in text:
+    for line in handle:
         line = line.split()
         if len(line) != 5:
             print('err: ocr.parse_box(): The format of the boxfile is not what was expected.', file=sys.stderr)
             sys.exit(1)
         data.append([line[0], int(line[1]), int(line[2]), int(line[3]), int(line[4])])
+
+    handle.close()
 
     return data
 
@@ -55,9 +57,9 @@ def get_text(image):
     #####
 
     boxfile = parse_box('page_box.txt')
-    handle = open('page_txt.txt', 'r')
-    txt = handle.readlines()
-    handle.close()
+    handle = open('page_txt.txt', 'r', encoding="utf8")
+    #txt = handle.readlines()
+    #handle.close()
 
     page_xn = 100000
     page_xx = 100000
@@ -65,7 +67,7 @@ def get_text(image):
     page_yx = 0
 
     line_buff = ''
-    for line in txt:
+    for line in handle:
         line = line.strip()
         if line == '\n' or line == '':
             continue
@@ -92,7 +94,7 @@ def get_text(image):
                         boxfile.pop(0)
                     else:
                         print('wrn: significant mismatch between ocr text and ocr position')
-                        print('{0}, {1}, {2}'.format(word, char, boxfile[0][0]))
+                        #print('{0}, {1}, {2}'.format(word, char, boxfile[0][0]))
                 data = boxfile.pop(0)
 
                 if word_xn > data[1]:
@@ -121,6 +123,8 @@ def get_text(image):
             word_buff = '%s\n  (word %s %s %s %s "%s")' % (word_buff, word_xn, word_xx, word_yn, word_yx, word)
         line_buff = '%s\n (line %s %s %s %s\n%s)' % (line_buff, word_xn, word_xx, word_yn, word_yx, word_buff)
     page_buff = '(page %s %s %s %s\n%s)\n' % (page_xn, page_xx, page_yn, page_yx, line_buff)
+
+    handle.close()
 
     os.remove('page_box.txt')
     os.remove('page_txt.txt')
