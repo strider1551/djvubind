@@ -29,28 +29,25 @@ if __name__ == '__main__':
     usage = "usage: %prog [options] directory"
     description = "djvubind is designed to facilitate creating high-quality djvu files, including positional ocr, metadata, and bookmarks."
     parser = optparse.OptionParser(usage, version='0.0.1', description=description)
-    parser.set_defaults(quiet=False,
+    parser.set_defaults(quiet=False, no_ocr=False,
                         cover_front='cover_front.jpg', cover_back='cover_back.jpg',
-                        metadata='metadata', bookmarks='bookmarks',
-                        dpi=None)
-    parser.add_option("--cover_front", dest="cover_front", help="Specifies an alternate front cover image.  By default, '%default' is used if present.")
-    parser.add_option("--cover_back", dest="cover_back", help="Specifies an alternate back cover image.  By default, '%default' is used if present.")
+                        metadata='metadata', bookmarks='bookmarks')
+    parser.add_option("--cover-front", dest="cover_front", help="Specifies an alternate front cover image.  By default, '%default' is used if present.")
+    parser.add_option("--cover-back", dest="cover_back", help="Specifies an alternate back cover image.  By default, '%default' is used if present.")
     parser.add_option("--metadata", dest="metadata", help="Specifies an alternate metadata file.  By default, '%default' is used if present.")
     parser.add_option("--bookmarks", dest="bookmarks", help="Specifies an alternate bookmarks.  By default, '%default' is used if present.")
-    parser.add_option("--dpi", dest="dpi", help="The dpi of the images.  Presently this *needs* to be specified by hand.")
+    parser.add_option("--no-ocr", action="store_true", dest="no_ocr")
     parser.add_option("-q", "--quiet", action="store_true", dest="quiet")
     (options, args) = parser.parse_args(sys.argv)
 
     if options.quiet:
         sys.stdout = open('/dev/null', 'w')
 
-    if options.dpi is None:
-        print('Presently, the --dpi option *must* be sepcified.', file=sys.stderr)
-        sys.exit(1)
-
     # Dependency check
     deps = ['cpaldjvu', 'djvm', 'djvused', 'identify', 'minidjvu', 'tesseract']
     for dep in deps:
+        if (dep == 'tesseract') and (options.no_ocr):
+            continue
         if (not Djvubind.utils.is_executable(dep)):
             print('err: __main__: external dependency ({0}) cannot be found'.format(dep), file=sys.stderr)
             sys.exit(1)
@@ -81,7 +78,7 @@ if __name__ == '__main__':
         if page.bitonal:
             shutil.move(page.path, temp_dir)
     os.chdir(temp_dir)
-    Djvubind.utils.execute('minidjvu --dpi {0} --pages-per-dict 100 * book.djvu'.format(options.dpi))
+    Djvubind.utils.execute('minidjvu --dpi {0} --pages-per-dict 100 * book.djvu'.format(book.dpi))
     for filename in glob.glob('*'):
         shutil.move(filename, '../')
     os.chdir('../')
@@ -98,21 +95,22 @@ if __name__ == '__main__':
             os.remove('{0}.djvu'.format(page.path))
 
     # Ocr
-    for page in book.pages:
-        handle = open('ocr.txt', 'w')
-        handle.write(page.text)
-        handle.close()
-        page_number = book.pages.index(page)+1
-        Djvubind.utils.execute('djvused -e "select {0}; remove-txt; set-txt \'ocr.txt\'; save" book.djvu'.format(page_number))
-        os.remove('ocr.txt')
+    if (not options.no_ocr):
+        for page in book.pages:
+            handle = open('ocr.txt', 'w')
+            handle.write(page.text)
+            handle.close()
+            page_number = book.pages.index(page)+1
+            Djvubind.utils.execute('djvused -e "select {0}; remove-txt; set-txt \'ocr.txt\'; save" book.djvu'.format(page_number))
+            os.remove('ocr.txt')
 
     # Insert front/back covers, metadata, and bookmarks
     if os.path.isfile(options.cover_front):
-        Djvubind.utils.execute('c44 -dpi {0} "{1}" "{1}.djvu"'.format(options.dpi, options.cover_front))
+        Djvubind.utils.execute('c44 "{0}" "{0}.djvu"'.format(options.cover_front))
         Djvubind.utils.execute('djvm -i book.djvu "{0}.djvu" 1'.format(options.cover_front))
         os.remove('{0}.djvu'.format(options.cover_front))
     if os.path.isfile(options.cover_back):
-        Djvubind.utils.execute('c44 -dpi {0} "{1}" "{1}.djvu"'.format(options.dpi, options.cover_back))
+        Djvubind.utils.execute('c44 "{0}" "{0}.djvu"'.format(options.cover_back))
         Djvubind.utils.execute('djvm -i book.djvu "{0}.djvu" -1'.format(options.cover_back))
         os.remove('{0}.djvu'.format(options.cover_back))
     if os.path.isfile(options.metadata):

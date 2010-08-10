@@ -28,9 +28,16 @@ class Book:
         self.cover["back"] = None
         self.metadata = None
         self.bookmarks = None
+        self.dpi = None
 
     def insert_page(self, path):
         self.pages.append(Page(path))
+
+        if (self.dpi is not None) and (self.pages[-1].dpi != self.dpi):
+            print("wrn: organizer.Book.insert_page(): page dpi is different from the previous page.  If you encounter problems with minidjvu, this is probably why.", file=sys.stderr)
+            print("wrn: {0}".format(path))
+        self.dpi = self.pages[-1].dpi
+
         return None
 
 class Page:
