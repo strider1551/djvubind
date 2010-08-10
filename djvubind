@@ -14,11 +14,15 @@
 #       along with this program; if not, write to the Free Software
 #       Foundation, Inc.
 
+import glob
 import optparse
 import os
+import shutil
 import sys
+import tempfile
 
 import Djvubind.utils
+import Djvubind.organizer
 
 if __name__ == '__main__':
     # Command line parsing
@@ -26,11 +30,11 @@ if __name__ == '__main__':
     description = "djvubind is designed to facilitate creating high-quality djvu files, including positional ocr, metadata, and bookmarks."
     parser = optparse.OptionParser(usage, version='0.0.1', description=description)
     parser.set_defaults(quiet=False,
-                        front_cover='cover_front.tiff', back_cover='cover_back.tiff',
+                        cover_front='cover_front.jpg', cover_back='cover_back.jpg',
                         metadata='metadata', bookmarks='bookmarks',
                         dpi=None)
-    parser.add_option("--front_cover", dest="cover_front", help="Specifies an alternate front cover image.  By default, '%default' is used if present.")
-    parser.add_option("--back_cover", dest="cover_back", help="Specifies an alternate back cover image.  By default, '%default' is used if present.")
+    parser.add_option("--cover_front", dest="cover_front", help="Specifies an alternate front cover image.  By default, '%default' is used if present.")
+    parser.add_option("--cover_back", dest="cover_back", help="Specifies an alternate back cover image.  By default, '%default' is used if present.")
     parser.add_option("--metadata", dest="metadata", help="Specifies an alternate metadata file.  By default, '%default' is used if present.")
     parser.add_option("--bookmarks", dest="bookmarks", help="Specifies an alternate bookmarks.  By default, '%default' is used if present.")
     parser.add_option("--dpi", dest="dpi", help="The dpi of the images.  Presently this *needs* to be specified by hand.")
@@ -64,72 +68,47 @@ if __name__ == '__main__':
             os.chdir(directory)
 
     # Create list of all images going into the djvu file.
-    images = Djvubind.utils.list_files()
-    remove = []
-    for file in images:
+    book = Djvubind.organizer.Book()
+    for file in Djvubind.utils.list_files():
         ext = file.split('.')[-1]
         ext = ext.lower()
-        if (ext not in ['tif', 'tiff', 'jpg', 'jpeg']) or (file in [options.cover_front, options.cover_back]):
-            remove.append(file)
-    for file in remove:
-        images.remove(file)
-    del remove
+        if (ext in ['tif', 'tiff', 'jpg', 'jpeg']) and (file not in [options.cover_front, options.cover_back]):
+            book.insert_page(file)
 
-    # Create a dictionary wherin the key is the filename and the value is the page number
-    page_numbers = {}
-    i = 0
-    for file in images:
-        page_numbers[file] = i
-        i = i + 1
-    del i
-
-    # Identify non-bitonal pages
-    nonbitonal = []
-    for file in images:
-        if Djvubind.utils.execute('identify -format %z "{0}"'.format(file), capture=True) != b'1\n':
-            nonbitonal.append(file)
-    nonbitonal.sort()
-
-    # Rename image files temporarily so that minidjvu can work exclusively with the bitonals
-    for file in images:
-        if file not in nonbitonal:
-            os.rename(file, 'bitonal_'+file)
-        else:
-            os.rename(file, 'nonbitonal_'+file)
-
-    # Create djvu with minidjvu
-    Djvubind.utils.execute('minidjvu --dpi {0} --pages-per-dict 100 bitonal_* book.djvu'.format(options.dpi))
+    # Create djvu of bitonals with minidjvu
+    temp_dir = tempfile.mkdtemp(dir='./', prefix='temp_')
+    for page in book.pages:
+        if page.bitonal:
+            shutil.move(page.path, temp_dir)
+    os.chdir(temp_dir)
+    Djvubind.utils.execute('minidjvu --dpi {0} --pages-per-dict 100 * book.djvu'.format(options.dpi))
+    for filename in glob.glob('*'):
+        shutil.move(filename, '../')
+    os.chdir('../')
+    shutil.rmtree(temp_dir)
 
     # Create djvu of non-bitonals and insert into djvu
-    for file in nonbitonal:
-        Djvubind.utils.execute('convert "nonbitonal_{0}" "nonbitonal_{0}.ppm"'.format(file))
-        Djvubind.utils.execute('cpaldjvu -dpi {0} "nonbitonal_{1}.ppm" "nonbitonal_{1}.djvu"' % (options.dpi, file))
-        os.remove('nonbitonal_{0}.ppm'.format(file))
-        page_number = page_numbers[file]
-        Djvubind.utils.execute('djvm -i book.djvu "nonbitonal_{0}.djvu" {1}'.format(file, page_number+1))
-        os.remove('bitonal_{0}.djvu'.format(file))
-
-    # Restore original filenames
-    for file in images:
-        if file not in nonbitonal:
-            os.rename('bitonal_'+file, file)
-        else:
-            os.rename('nonbitonal_'+file, file)
+    for page in book.pages:
+        if not page.bitonal:
+            Djvubind.utils.execute('convert "{0}" "{0}.ppm"'.format(page.path))
+            Djvubind.utils.execute('cpaldjvu -dpi {0} "{1}.ppm" "{1}.djvu"'.format(page.dpi, page.path))
+            os.remove('{0}.ppm'.format(page.path))
+            page_number = book.pages.index(page)
+            Djvubind.utils.execute('djvm -i book.djvu "{0}.djvu" {1}'.format(page.path, page_number+1))
+            os.remove('{0}.djvu'.format(page.path))
 
     # Ocr
     #os.system('djvuocr -i "." -f book.djvu')
 
     # Insert front/back covers, metadata, and bookmarks
     if os.path.isfile(options.cover_front):
-        Djvubind.utils.execute('convert "{0}" "{0}.ppm"'.format(options.cover_front))
-        Djvubind.utils.execute('cpaldjvu -dpi {0} "{1}.ppm" "{1}.djvu"'.format(options.dpi, options.cover_front))
-        os.remove('{0}.ppm'.format(options.cover_front))
-        Djvubind.utils.execute('djvm -i book.djvu "{0}" 1'.format(options.cover_front))
+        Djvubind.utils.execute('c44 -dpi {0} "{1}" "{1}.djvu"'.format(options.dpi, options.cover_front))
+        Djvubind.utils.execute('djvm -i book.djvu "{0}.djvu" 1'.format(options.cover_front))
+        os.remove('{0}.djvu'.format(options.cover_front))
     if os.path.isfile(options.cover_back):
-        Djvubind.utils.execute('convert "{0}" "{0}.ppm"'.format(options.cover_back))
-        Djvubind.utils.execute('cpaldjvu -dpi {0} "{1}.ppm" "{1}.djvu"'.format(options.dpi, options.cover_back))
-        os.remove('{0}.ppm'.format(options.cover_back))
-        Djvubind.utils.execute('djvm -i book.djvu "{0}" -1'.format(options.cover_back))
+        Djvubind.utils.execute('c44 -dpi {0} "{1}" "{1}.djvu"'.format(options.dpi, options.cover_back))
+        Djvubind.utils.execute('djvm -i book.djvu "{0}.djvu" -1'.format(options.cover_back))
+        os.remove('{0}.djvu'.format(options.cover_back))
     if os.path.isfile(options.metadata):
         Djvubind.utils.execute('djvused -e "set-meta {0}; save" book.djvu'.format(options.metadata))
     if os.path.isfile(options.bookmarks):
