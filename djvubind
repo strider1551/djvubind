@@ -76,7 +76,7 @@ if __name__ == '__main__':
             book.insert_page(file)
 
     # Create djvu of bitonals with minidjvu
-    temp_dir = tempfile.mkdtemp(dir='./', prefix='temp_')
+    temp_dir = tempfile.mkdtemp(dir='./', prefix='minidjvu_')
     for page in book.pages:
         if page.bitonal:
             shutil.move(page.path, temp_dir)
@@ -98,7 +98,13 @@ if __name__ == '__main__':
             os.remove('{0}.djvu'.format(page.path))
 
     # Ocr
-    #os.system('djvuocr -i "." -f book.djvu')
+    for page in book.pages:
+        handle = open('ocr.txt', 'w')
+        handle.write(page.text)
+        handle.close()
+        page_number = book.pages.index(page)+1
+        Djvubind.utils.execute('djvused -e "select {0}; remove-txt; set-txt \'ocr.txt\'; save" book.djvu'.format(page_number))
+        os.remove('ocr.txt')
 
     # Insert front/back covers, metadata, and bookmarks
     if os.path.isfile(options.cover_front):

@@ -15,7 +15,9 @@
 #       Foundation, Inc.
 
 import os
+import shutil
 
+import Djvubind.ocr
 import Djvubind.utils
 
 class Book:
@@ -34,15 +36,33 @@ class Book:
 class Page:
     def __init__(self, path):
         self.path = os.path.abspath(path)
-        self.bitonal = self.is_bitonal(self.path)
-        self.dpi = self.get_dpi(self.path)
 
-    def get_dpi(self, path):
-        dpi = Djvubind.utils.execute("identify -format '%x' {0} | awk '{{print $1}}'".format(path), capture=True)
+        self.bitonal = self.is_bitonal()
+        self.dpi = self.get_dpi()
+        self.text = self.ocr()
+
+    def get_dpi(self):
+        dpi = Djvubind.utils.execute("identify -format '%x' {0} | awk '{{print $1}}'".format(self.path), capture=True)
         return int(dpi)
 
-    def is_bitonal(self, path):
-        if (Djvubind.utils.execute('identify -format %z "{0}"'.format(path), capture=True) != b'1\n'):
+    def is_bitonal(self):
+        if (Djvubind.utils.execute('identify -format %z "{0}"'.format(self.path), capture=True) != b'1\n'):
             return False
         else:
             return True
+
+    def ocr(self):
+        if self.path.split('.')[-1] in ['jpg', 'jpeg']:
+            Djvubind.utils.execute('convert "{0}" "{0}.tif"'.format(self.path))
+            text = Djvubind.ocr.get_text(self.path+'.tif')
+            os.remove(self.path+'.tif')
+        elif self.path.split('.')[-1] == 'tiff':
+            shutil.copy2(self.path, self.path+'.tif')
+            text = Djvubind.ocr.get_text(self.path+'.tif')
+            os.remove(self.path+'.tif')
+        elif self.path.split('.')[-1] == 'tif':
+            text = Djvubind.ocr.get_text(self.path)
+        else:
+            text =  ''
+
+        return text
