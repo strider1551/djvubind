@@ -16,6 +16,7 @@
 
 import os
 import shutil
+import sys
 
 import Djvubind.ocr
 import Djvubind.utils
@@ -23,20 +24,18 @@ import Djvubind.utils
 class Book:
     def __init__(self):
         self.pages = []
-        self.cover = {}
-        self.cover["front"] = None
-        self.cover["back"] = None
-        self.metadata = None
-        self.bookmarks = None
         self.dpi = None
 
-    def insert_page(self, path):
+    def insert_page(self, path, no_ocr=True):
         self.pages.append(Page(path))
 
         if (self.dpi is not None) and (self.pages[-1].dpi != self.dpi):
             print("wrn: organizer.Book.insert_page(): page dpi is different from the previous page.  If you encounter problems with minidjvu, this is probably why.", file=sys.stderr)
             print("wrn: {0}".format(path))
         self.dpi = self.pages[-1].dpi
+
+        if not no_ocr:
+            self.pages[-1].ocr()
 
         return None
 
@@ -46,7 +45,8 @@ class Page:
 
         self.bitonal = self.is_bitonal()
         self.dpi = self.get_dpi()
-        self.text = self.ocr()
+
+        self.text = ''
 
     def get_dpi(self):
         dpi = Djvubind.utils.execute("identify -format '%x' {0} | awk '{{print $1}}'".format(self.path), capture=True)
@@ -61,15 +61,15 @@ class Page:
     def ocr(self):
         if self.path.split('.')[-1] in ['jpg', 'jpeg']:
             Djvubind.utils.execute('convert "{0}" "{0}.tif"'.format(self.path))
-            text = Djvubind.ocr.get_text(self.path+'.tif')
+            self.text = Djvubind.ocr.get_text(self.path+'.tif')
             os.remove(self.path+'.tif')
         elif self.path.split('.')[-1] == 'tiff':
             shutil.copy2(self.path, self.path+'.tif')
-            text = Djvubind.ocr.get_text(self.path+'.tif')
+            self.text = Djvubind.ocr.get_text(self.path+'.tif')
             os.remove(self.path+'.tif')
         elif self.path.split('.')[-1] == 'tif':
-            text = Djvubind.ocr.get_text(self.path)
+            self.text = Djvubind.ocr.get_text(self.path)
         else:
-            text =  ''
+            self.text =  ''
 
-        return text
+        return None

@@ -33,9 +33,9 @@ def color(text, color):
 
     return text
 
-def execute(cmd, out=sys.stdout, capture=False):
+def execute(cmd, capture=False):
     """Execute a command line process."""
-    print('>>> {0}'.format(cmd), file=out)
+    print('>>> {0}'.format(cmd))
     if capture:
         s = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
     else:
