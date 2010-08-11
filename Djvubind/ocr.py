@@ -121,7 +121,11 @@ def get_text(image):
             word = word.replace("'", "")
             word = word.replace('\\', '')
             word_buff = '%s\n  (word %s %s %s %s "%s")' % (word_buff, word_xn, word_xx, word_yn, word_yx, word)
-        line_buff = '%s\n (line %s %s %s %s\n%s)' % (line_buff, word_xn, word_xx, word_yn, word_yx, word_buff)
+        # Bad things happen if the line has no words
+        if (word_xn == 100000) and (word_yn == 0):
+            continue
+        else:
+            line_buff = '%s\n (line %s %s %s %s\n%s)' % (line_buff, word_xn, word_xx, word_yn, word_yx, word_buff)
     page_buff = '(page %s %s %s %s\n%s)\n' % (page_xn, page_xx, page_yn, page_yx, line_buff)
 
     handle.close()
