@@ -28,15 +28,15 @@ if __name__ == '__main__':
     # Command line parsing
     usage = "usage: %prog [options] directory"
     description = "djvubind is designed to facilitate creating high-quality djvu files, including positional ocr, metadata, and bookmarks."
-    parser = optparse.OptionParser(usage, version='0.0.1', description=description)
+    parser = optparse.OptionParser(usage, version='0.1.0', description=description)
     parser.set_defaults(quiet=False, no_ocr=False,
                         cover_front='cover_front.jpg', cover_back='cover_back.jpg',
                         metadata='metadata', bookmarks='bookmarks')
     parser.add_option("--cover-front", dest="cover_front", help="Specifies an alternate front cover image.  By default, '%default' is used if present.")
     parser.add_option("--cover-back", dest="cover_back", help="Specifies an alternate back cover image.  By default, '%default' is used if present.")
     parser.add_option("--metadata", dest="metadata", help="Specifies an alternate metadata file.  By default, '%default' is used if present.")
-    parser.add_option("--bookmarks", dest="bookmarks", help="Specifies an alternate bookmarks.  By default, '%default' is used if present.")
-    parser.add_option("--no-ocr", action="store_true", dest="no_ocr")
+    parser.add_option("--bookmarks", dest="bookmarks", help="Specifies an alternate bookmarks file.  By default, '%default' is used if present.")
+    parser.add_option("--no-ocr", action="store_true", dest="no_ocr", help="Images will not be processed for text content.")
     parser.add_option("-q", "--quiet", action="store_true", dest="quiet")
     (options, args) = parser.parse_args(sys.argv)
 
@@ -69,7 +69,7 @@ if __name__ == '__main__':
     for file in Djvubind.utils.list_files():
         ext = file.split('.')[-1]
         ext = ext.lower()
-        if (ext in ['tif', 'tiff', 'jpg', 'jpeg']) and (file not in [options.cover_front, options.cover_back]):
+        if (ext in ['tif', 'tiff']) and (file not in [options.cover_front, options.cover_back]):
             book.insert_page(file, options.no_ocr)
 
     # Create djvu of bitonals with minidjvu
