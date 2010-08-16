@@ -53,9 +53,12 @@ class Page:
         return int(dpi)
 
     def is_bitonal(self):
-        if (Djvubind.utils.execute('identify -format %z "{0}"'.format(self.path), capture=True) != b'1\n'):
+        if (Djvubind.utils.execute("identify -verbose {0} | grep 'Base type' | awk '{{print $3}}'".format(self.path), capture=True) != b'Bilevel\n'):
             return False
         else:
+            if (Djvubind.utils.execute('identify -format %z "{0}"'.format(self.path), capture=True) != b'1\n'):
+                print("msg: Bitonal image but with a depth of 8 instead of 1.  Modifying image depth.")
+                Djvubind.utils.execute("mogrify -colors 2 '{0}'".format(self.path))
             return True
 
     def ocr(self):

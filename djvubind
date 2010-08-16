@@ -87,12 +87,25 @@ if __name__ == '__main__':
     # Create djvu of non-bitonals and insert into djvu
     for page in book.pages:
         if not page.bitonal:
-            Djvubind.utils.execute('convert "{0}" "{0}.ppm"'.format(page.path))
-            Djvubind.utils.execute('cpaldjvu -dpi {0} "{1}.ppm" "{1}.djvu"'.format(page.dpi, page.path))
-            os.remove('{0}.ppm'.format(page.path))
+            Djvubind.utils.execute('convert -opaque black "{0}" "temp_graphics.tif"'.format(page.path))
+            Djvubind.utils.execute('convert +opaque black "{0}" "temp_textual.tif"'.format(page.path))
+            Djvubind.utils.execute('cjb2 temp_textual.tif temp_textual.djvu')
+            Djvubind.utils.execute('ddjvu -format=rle -v temp_textual.djvu temp_textual.rle')
+            Djvubind.utils.execute('convert temp_graphics.tif temp_graphics.ppm')
+            Djvubind.utils.execute('cat temp_textual.rle temp_graphics.ppm > temp_merge.mix')
+            Djvubind.utils.execute('csepdjvu -vv temp_merge.mix temp_final.djvu')
             page_number = book.pages.index(page)
-            Djvubind.utils.execute('djvm -i book.djvu "{0}.djvu" {1}'.format(page.path, page_number+1))
-            os.remove('{0}.djvu'.format(page.path))
+            Djvubind.utils.execute('djvm -i book.djvu "temp_final.djvu" {0}'.format(page_number+1))
+            for tempfile in glob.glob('temp_*'):
+                os.remove(tempfile)
+
+
+            #Djvubind.utils.execute('convert "{0}" "{0}.ppm"'.format(page.path))
+            #Djvubind.utils.execute('cpaldjvu -dpi {0} "{1}.ppm" "{1}.djvu"'.format(page.dpi, page.path))
+            #os.remove('{0}.ppm'.format(page.path))
+            #page_number = book.pages.index(page)
+            #Djvubind.utils.execute('djvm -i book.djvu "{0}.djvu" {1}'.format(page.path, page_number+1))
+            #os.remove('{0}.djvu'.format(page.path))
 
     # Ocr
     if (not options.no_ocr):
