@@ -28,7 +28,7 @@ if __name__ == '__main__':
     # Command line parsing
     usage = "usage: %prog [options] directory"
     description = "djvubind is designed to facilitate creating high-quality djvu files, including positional ocr, metadata, and bookmarks."
-    parser = optparse.OptionParser(usage, version='0.1.1', description=description)
+    parser = optparse.OptionParser(usage, version='0.1.2', description=description)
     parser.set_defaults(quiet=False, no_ocr=False,
                         cover_front='cover_front.jpg', cover_back='cover_back.jpg',
                         metadata='metadata', bookmarks='bookmarks')
@@ -98,14 +98,6 @@ if __name__ == '__main__':
             Djvubind.utils.execute('djvm -i book.djvu "temp_final.djvu" {0}'.format(page_number+1))
             for tempfile in glob.glob('temp_*'):
                 os.remove(tempfile)
-
-
-            #Djvubind.utils.execute('convert "{0}" "{0}.ppm"'.format(page.path))
-            #Djvubind.utils.execute('cpaldjvu -dpi {0} "{1}.ppm" "{1}.djvu"'.format(page.dpi, page.path))
-            #os.remove('{0}.ppm'.format(page.path))
-            #page_number = book.pages.index(page)
-            #Djvubind.utils.execute('djvm -i book.djvu "{0}.djvu" {1}'.format(page.path, page_number+1))
-            #os.remove('{0}.djvu'.format(page.path))
 
     # Ocr
     if (not options.no_ocr):

@@ -1,6 +1,7 @@
 v0.1.2
 
-* Changed the shebang line to explicitely use python3.
+* Explicitely uses python3 in the shebang line.
+* Support for scantailor's mixed mode.
 
 =====
 v0.1.1
