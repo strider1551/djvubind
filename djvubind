@@ -77,11 +77,12 @@ if __name__ == '__main__':
     for page in book.pages:
         if page.bitonal:
             shutil.move(page.path, temp_dir)
-    os.chdir(temp_dir)
-    Djvubind.utils.execute('minidjvu --dpi {0} --pages-per-dict 100 * book.djvu'.format(book.dpi))
-    for filename in glob.glob('*'):
-        shutil.move(filename, '../')
-    os.chdir('../')
+    if len(glob.glob(temp_dir+'/*')) > 0:
+        os.chdir(temp_dir)
+        Djvubind.utils.execute('minidjvu --dpi {0} --pages-per-dict 100 * book.djvu'.format(book.dpi))
+        for filename in glob.glob('*'):
+            shutil.move(filename, '../')
+        os.chdir('../')
     shutil.rmtree(temp_dir)
 
     # Create djvu of non-bitonals and insert into djvu
@@ -94,8 +95,11 @@ if __name__ == '__main__':
             Djvubind.utils.execute('convert temp_graphics.tif temp_graphics.ppm')
             Djvubind.utils.execute('cat temp_textual.rle temp_graphics.ppm > temp_merge.mix')
             Djvubind.utils.execute('csepdjvu -vv temp_merge.mix temp_final.djvu')
-            page_number = book.pages.index(page)
-            Djvubind.utils.execute('djvm -i book.djvu "temp_final.djvu" {0}'.format(page_number+1))
+            if (not os.path.isfile('book.djvu')):
+                shutil.move('temp_final.djvu', 'book.djvu')
+            else:
+                page_number = book.pages.index(page)
+                Djvubind.utils.execute('djvm -i book.djvu "temp_final.djvu" {0}'.format(page_number+1))
             for tempfile in glob.glob('temp_*'):
                 os.remove(tempfile)
 
