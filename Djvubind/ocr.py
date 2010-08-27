@@ -90,10 +90,11 @@ def get_text(image):
                     if len(boxfile) == 1:
                         break
                     if char == boxfile[1][0]:
-                        print('wrn: mismatch between ocr text and ocr position (fixed)')
+                        #print('wrn: mismatch between ocr text and ocr position (fixed)')
                         boxfile.pop(0)
                     else:
-                        print('wrn: significant mismatch between ocr text and ocr position')
+                        pass
+                        #print('wrn: significant mismatch between ocr text and ocr position')
                         #print('{0}, {1}, {2}'.format(word, char, boxfile[0][0]))
                 data = boxfile.pop(0)
 

@@ -35,7 +35,7 @@ def color(text, color):
 
 def execute(cmd, capture=False):
     """Execute a command line process."""
-    print('>>> {0}'.format(cmd))
+    #print('>>> {0}'.format(cmd))
     if capture:
         s = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
     else:

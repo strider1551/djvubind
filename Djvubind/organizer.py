@@ -26,40 +26,54 @@ class Book:
         self.pages = []
         self.dpi = None
 
-    def insert_page(self, path, no_ocr=True):
+    def insert_page(self, path):
         self.pages.append(Page(path))
-
-        if (self.dpi is not None) and (self.pages[-1].dpi != self.dpi):
-            print("wrn: organizer.Book.insert_page(): page dpi is different from the previous page.  If you encounter problems with minidjvu, this is probably why.", file=sys.stderr)
-            print("wrn: {0}".format(path))
-        self.dpi = self.pages[-1].dpi
-
-        if not no_ocr:
-            self.pages[-1].ocr()
-
         return None
+
+    def analyze(self, no_ocr=False):
+        for index in range(len(self.pages)):
+            position = (float(index)/len(self.pages))*100
+            print('  {0:.2f}%   {1}   [   ] Initializing.                '.format(position, os.path.split(self.pages[index].path)[1]), end='\r')
+            print('  {0:.2f}%   {1}   [   ] Checking if image is bitonal.'.format(position, os.path.split(self.pages[index].path)[1]), end='\r')
+            self.pages[index].is_bitonal()
+
+            print('  {0:.2f}%   {1}   [+  ] Finding image dpi.           '.format(position, os.path.split(self.pages[index].path)[1]), end='\r')
+            self.pages[index].get_dpi()
+            if (self.dpi is not None) and (self.pages[index].dpi != self.dpi):
+                print("wrn: organizer.Book.insert_page(): page dpi is different from the previous page.  If you encounter problems with minidjvu, this is probably why.", file=sys.stderr)
+                print("wrn: {0}".format(path))
+            self.dpi = self.pages[index].dpi
+
+            if no_ocr:
+                print('  {0:.2f}%   {1}   [++ ] Skipping OCR.                '.format(position, os.path.split(self.pages[index].path)[1]), end='\r')
+            else:
+                print('  {0:.2f}%   {1}   [++ ] Running OCR.                 '.format(position, os.path.split(self.pages[index].path)[1]), end='\r')
+                self.pages[index].ocr()
+
+            print('                                                     '.format(position, os.path.split(self.pages[index].path)[1]), end='\r')
 
 class Page:
     def __init__(self, path):
         self.path = os.path.abspath(path)
 
-        self.bitonal = self.is_bitonal()
-        self.dpi = self.get_dpi()
-
+        self.bitonal = None
+        self.dpi = 0
         self.text = ''
 
     def get_dpi(self):
         dpi = Djvubind.utils.execute("identify -format '%x' {0} | awk '{{print $1}}'".format(self.path), capture=True)
-        return int(dpi)
+        self.dpi = int(dpi)
+        return None
 
     def is_bitonal(self):
         if (Djvubind.utils.execute("identify -verbose {0} | grep 'Base type' | awk '{{print $3}}'".format(self.path), capture=True) != b'Bilevel\n'):
-            return False
+            self.bitonal = False
         else:
             if (Djvubind.utils.execute('identify -format %z "{0}"'.format(self.path), capture=True) != b'1\n'):
                 print("msg: Bitonal image but with a depth of 8 instead of 1.  Modifying image depth.")
                 Djvubind.utils.execute("mogrify -colors 2 '{0}'".format(self.path))
-            return True
+            self.bitonal = True
+        return None
 
     def ocr(self):
         if self.path.split('.')[-1] in ['jpg', 'jpeg']:
