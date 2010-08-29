@@ -1,9 +1,17 @@
+v0.1.3
+
+* Greately improved readability of program output.
+* Better file handling in ocr.py.
+* Bug Fix: unreported bug which causes a crash if no bitonal images are present.
+* Bug Fix: unreported bug which set mixed mode images to the (potentially) wrong dpi.
+
+======
 v0.1.2
 
 * Explicitely uses python3 in the shebang line.
 * Support for scantailor's mixed mode.
 
-=====
+======
 v0.1.1
 
 * Initial public release

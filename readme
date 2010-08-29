@@ -5,7 +5,7 @@ Dependencies
 
 python3
 djvulibre (specifically: cpaldjvu, djvm, djvused)
-imagemagick (specifically: identify)
+imagemagick
 minidjvu
 tesseract
 
@@ -57,7 +57,7 @@ Note the # symbol before the page number, and don't forget that if you have a co
 image, that will be page 1.
 
 ---
-An example metadata file
+An example metadata file:
 
 author "John Smith"
 title "Creating Quality Documents"

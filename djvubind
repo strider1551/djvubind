@@ -28,7 +28,7 @@ if __name__ == '__main__':
     # Command line parsing
     usage = "usage: %prog [options] directory"
     description = "djvubind is designed to facilitate creating high-quality djvu files, including positional ocr, metadata, and bookmarks."
-    parser = optparse.OptionParser(usage, version='0.1.2', description=description)
+    parser = optparse.OptionParser(usage, version='0.1.3', description=description)
     parser.set_defaults(quiet=False, no_ocr=False,
                         cover_front='cover_front.jpg', cover_back='cover_back.jpg',
                         metadata='metadata', bookmarks='bookmarks')
@@ -95,10 +95,10 @@ if __name__ == '__main__':
             Djvubind.utils.execute('convert -opaque black "{0}" "temp_graphics.tif"'.format(page.path))
             Djvubind.utils.execute('convert +opaque black "{0}" "temp_textual.tif"'.format(page.path))
             Djvubind.utils.execute('cjb2 temp_textual.tif temp_textual.djvu')
-            Djvubind.utils.execute('ddjvu -format=rle -v temp_textual.djvu temp_textual.rle')
+            Djvubind.utils.execute('ddjvu -format=rle -v temp_textual.djvu temp_textual.rle &> /dev/null')
             Djvubind.utils.execute('convert temp_graphics.tif temp_graphics.ppm')
             Djvubind.utils.execute('cat temp_textual.rle temp_graphics.ppm > temp_merge.mix')
-            Djvubind.utils.execute('csepdjvu -vv temp_merge.mix temp_final.djvu')
+            Djvubind.utils.execute('csepdjvu -d {0} temp_merge.mix temp_final.djvu &> /dev/null'.format(page.dpi))
             if (not os.path.isfile('book.djvu')):
                 shutil.move('temp_final.djvu', 'book.djvu')
             else:

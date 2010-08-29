@@ -70,7 +70,7 @@ class Page:
             self.bitonal = False
         else:
             if (Djvubind.utils.execute('identify -format %z "{0}"'.format(self.path), capture=True) != b'1\n'):
-                print("msg: Bitonal image but with a depth of 8 instead of 1.  Modifying image depth.")
+                print("msg: {0}: Bitonal image but with a depth of 8 instead of 1.  Modifying image depth.".format(os.path.split(self.path)[1]))
                 Djvubind.utils.execute("mogrify -colors 2 '{0}'".format(self.path))
             self.bitonal = True
         return None
