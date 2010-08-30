@@ -30,7 +30,7 @@ class Book:
         self.pages.append(Page(path))
         return None
 
-    def analyze(self, no_ocr=False):
+    def analyze(self, ocr_engine, no_ocr=False):
         for index in range(len(self.pages)):
             position = (float(index)/len(self.pages))*100
             print('  {0:.2f}%   {1}   [   ] Initializing.                '.format(position, os.path.split(self.pages[index].path)[1]), end='\r')
@@ -48,7 +48,7 @@ class Book:
                 print('  {0:.2f}%   {1}   [++ ] Skipping OCR.                '.format(position, os.path.split(self.pages[index].path)[1]), end='\r')
             else:
                 print('  {0:.2f}%   {1}   [++ ] Running OCR.                 '.format(position, os.path.split(self.pages[index].path)[1]), end='\r')
-                self.pages[index].ocr()
+                self.pages[index].ocr(ocr_engine)
 
             print('                                                     '.format(position, os.path.split(self.pages[index].path)[1]), end='\r')
 
@@ -75,17 +75,17 @@ class Page:
             self.bitonal = True
         return None
 
-    def ocr(self):
+    def ocr(self, engine):
         if self.path.split('.')[-1] in ['jpg', 'jpeg']:
             Djvubind.utils.execute('convert "{0}" "{0}.tif"'.format(self.path))
-            self.text = Djvubind.ocr.get_text(self.path+'.tif')
+            self.text = Djvubind.ocr.ocr(self.path+'.tif', engine)
             os.remove(self.path+'.tif')
         elif self.path.split('.')[-1] == 'tiff':
             shutil.copy2(self.path, self.path+'.tif')
-            self.text = Djvubind.ocr.get_text(self.path+'.tif')
+            self.text = Djvubind.ocr.ocr(self.path+'.tif', engine)
             os.remove(self.path+'.tif')
         elif self.path.split('.')[-1] == 'tif':
-            self.text = Djvubind.ocr.get_text(self.path)
+            self.text = Djvubind.ocr.ocr(self.path, engine)
         else:
             self.text =  ''
 

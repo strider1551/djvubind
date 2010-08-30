@@ -16,10 +16,133 @@
 #       MA 02110-1301, USA.
 
 import os
+import shutil
 import string
 import sys
 
+from html.parser import HTMLParser
+
 import Djvubind.utils
+
+class hocrParser(HTMLParser):
+
+    def __init__(self):
+        HTMLParser.__init__(self)
+        self.boxing = []
+
+    def input(self, data):
+        self.data = data
+
+    def handle_starttag(self, tag, attrs):
+        if (tag == 'br') or (tag == 'p'):
+            if (len(self.boxing) > 0):
+                self.boxing.append('newline')
+        elif (tag == 'span'):
+            # Get the whole element (<span title="bbox n n n n">x</span>), not just the tag.
+            element = {}
+            element['start'] = self.data.find(self.get_starttag_text())
+            element['end'] = self.data.find('>', element['start'])
+            element['end'] = self.data.find('>', element['end']+1)
+            element['end'] = element['end'] + 1
+            element['text'] = self.data[element['start']:element['end']]
+            pos = element['text'].find('>') + 1
+            element['char'] = element['text'][pos:pos+1]
+
+            # Figure out the boxing information from the title attribute.
+            attrs = dict(attrs)['title']
+            attrs = attrs.split()[1:]
+            positions = {'xmin':int(attrs[0]), 'ymin':int(attrs[1]), 'xmax':int(attrs[2]), 'ymax':int(attrs[3])}
+            positions['char'] = element['char']
+
+            # Disregard punction.  Note that a single quote might be an apostrophy and not a quote.
+            if element['char'] not in ['.', ',', '!', '?', ':', ';', '"']:
+                self.boxing.append(positions)
+
+            # A word break is indicated by a space after the </span> tag.
+            if (self.data[element['end']:element['end']+1] == ' '):
+                self.boxing.append('space')
+
+        return None
+
+class djvuWordBox:
+    def __init__(self):
+        self.xmax = 0
+        self.xmin = 100000
+        self.ymax = 0
+        self.ymin = 100000
+        self.word = ''
+
+    def add_char(self, boxing):
+        if boxing['xmin'] < self.xmin:
+            self.xmin = boxing['xmin']
+        if boxing['ymin'] < self.ymin:
+            self.ymin = boxing['ymin']
+        if boxing['xmax'] > self.xmax:
+            self.xmax = boxing['xmax']
+        if boxing['ymax'] > self.ymax:
+            self.ymax = boxing['ymax']
+        self.word = self.word + boxing['char']
+        return None
+
+    def encode(self):
+        if (self.xmin > self.xmax) or (self.ymin > self.ymax):
+            print('err: ocr.djvuWordBox(): Boxing information is impossible (x/y min exceed x/y max).')
+            sys.exit(1)
+        return '(word {0} {1} {2} {3} "{4}")'.format(self.xmin, self.ymin, self.xmax, self.ymax, self.word)
+
+class djvuLineBox:
+    def __init__(self):
+        self.xmax = 0
+        self.xmin = 100000
+        self.ymax = 0
+        self.ymin = 100000
+        self.words = []
+
+    def add_word(self, word_box):
+        if word_box.xmin < self.xmin:
+            self.xmin = word_box.xmin
+        if word_box.ymin < self.ymin:
+            self.ymin = word_box.ymin
+        if word_box.xmax > self.xmax:
+            self.xmax = word_box.xmax
+        if word_box.ymax > self.ymax:
+            self.ymax = word_box.ymax
+        self.words.append(word_box)
+
+    def encode(self):
+        if (self.xmin > self.xmax) or (self.ymin > self.ymax):
+            print('err: ocr.djvuLineBox(): Boxing information is impossible (x/y min exceed x/y max).')
+            sys.exit(1)
+        line = '(line {0} {1} {2} {3}'.format(self.xmin, self.ymin, self.xmax, self.ymax)
+        words = '\n    '.join([x.encode() for x in self.words])
+        return line+'\n    '+words+')'
+
+class djvuPageBox:
+    def __init__(self):
+        self.xmax = 0
+        self.xmin = 100000
+        self.ymax = 0
+        self.ymin = 100000
+        self.lines = []
+
+    def add_line(self, line_box):
+        if line_box.xmin < self.xmin:
+            self.xmin = line_box.xmin
+        if line_box.ymin < self.ymin:
+            self.ymin = line_box.ymin
+        if line_box.xmax > self.xmax:
+            self.xmax = line_box.xmax
+        if line_box.ymax > self.ymax:
+            self.ymax = line_box.ymax
+        self.lines.append(line_box)
+
+    def encode(self):
+        if (self.xmin > self.xmax) or (self.ymin > self.ymax):
+            print('err: ocr.djvuPageBox(): Boxing information is impossible (x/y min exceed x/y max).')
+            sys.exit(1)
+        page = '(page {0} {1} {2} {3}'.format(self.xmin, self.ymin, self.xmax, self.ymax)
+        lines = '\n  '.join([x.encode() for x in self.lines])
+        return page+'\n  '+lines+')'
 
 def parse_box(boxfile):
     """
@@ -138,3 +261,74 @@ def get_text(image):
     os.remove('page_txt.txt')
 
     return page_buff
+
+
+def ocr(image, engine='tesseract'):
+    page = djvuPageBox()
+
+    if (engine == 'cuneiform'):
+        try:
+            status = Djvubind.utils.execute('cuneiform -f "hocr" -o "{0}.hocr" --singlecolumn "{0}" &> /dev/null'.format(image))
+            if status == 134:
+                # Cuneiform seems to have a buffer flow on every other image, and even more without the --singlecolumn option.
+                msg = 'wrn: cuneiform encountered a buffer overflow on "{0}".  Ocr on this image will be done with tesseract.'.format(os.path.split(image)[1])
+                msg = Djvubind.utils.color(msg, 'red')
+                print(msg, file=sys.stderr)
+                return ocr(image, engine='tesseract')
+        except:
+            # Cuneiform crashes on blank images (exit status 1, message about failing to detect something).
+            # They do not consider this behavior a bug. See https://bugs.launchpad.net/cuneiform-linux/+bug/445357
+            msg = 'wrn: cuneiform crashed on "{0}", which likely means the image is blank.  No ocr will be done.'.format(os.path.split(image)[1])
+            msg = Djvubind.utils.color(msg, 'red')
+            print(msg, file=sys.stderr)
+            with open('{0}.hocr'.format(image), 'w', encoding='utf8') as handle:
+                handle.write('')
+
+        with open('{0}.hocr'.format(image), 'r', encoding='utf8') as handle:
+            text = handle.read()
+
+        parser = hocrParser()
+        parser.input(text)
+        parser.feed(text)
+
+        # Cuneiform hocr inverts the y-axis compared to what djvu expects.  The total height of the
+        # image is needed to invert the values.  Better to get it now once rather than in the loop
+        # where it is used.
+        height = int(Djvubind.utils.execute('identify -format %H "{0}"'.format(image), capture=True))
+
+        line = djvuLineBox()
+        word = djvuWordBox()
+        for entry in parser.boxing:
+            if entry == 'newline':
+                if (line.words != []):
+                    page.add_line(line)
+                line = djvuLineBox()
+                word = djvuWordBox()
+            elif entry == 'space':
+                if (word.word != ''):
+                    line.add_word(word)
+                word = djvuWordBox()
+            else:
+                # Invert the y-axis
+                ymin, ymax = entry['ymin'], entry['ymax']
+                entry['ymin'] = height - ymax
+                entry['ymax'] = height - ymin
+                word.add_char(entry)
+
+        basename = os.path.split(image)[1].split('.')[0]
+        if os.path.isdir(basename+'_files'):
+            shutil.rmtree(basename+'_files')
+        os.remove(image+'.hocr')
+
+    elif (engine == 'tesseract'):
+        # Run the old code for now.  In future, rework to use djvuPageBox
+        return get_text(image)
+
+    else:
+        print('err: ocr.ocr(): Specified ocr engine is not supported.', file=sys.stderr)
+        sys.exit(1)
+
+    if (page.lines != []):
+        return page.encode()
+    else:
+        return ''

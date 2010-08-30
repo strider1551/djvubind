@@ -42,14 +42,21 @@ def execute(cmd, capture=False):
         s = subprocess.Popen(cmd, shell=True)
     status = s.wait()
 
-    if status != 0:
+
+    if (cmd.startswith('cuneiform')) and (status == 134):
+        return status
+    elif (cmd.startswith('cuneiform')) and (status == 1):
+        # Cuneiform crashes on blank images.  Still need to raise an error since it may crash
+        # for other reasons, but ocr.py by default just writes a blank file if cuneiform fails.
+        sys.exit(1)
+    elif status != 0:
         print('err: utils.execute(): command exited with bad status.\ncmd = {0}\nexit status = {1}'.format(cmd, status), file=sys.stderr)
         sys.exit(1)
 
     if capture:
         return s.stdout.read()
     else:
-        return None
+        return status
 
 def list_files(dir='.', filter=None, extension=None):
     """Find all files in a given directory that match criteria."""

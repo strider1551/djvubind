@@ -8,9 +8,10 @@ djvulibre (specifically: cpaldjvu, djvm, djvused)
 imagemagick
 minidjvu
 tesseract
+cuneiform
 
-You could forgo having tesseract installed so long as you always use the --no-ocr
-option.
+You could forgo having tesseract and cuneiform installed so long as you always use the
+--no-ocr option.
 
 ========
 Installation
