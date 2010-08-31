@@ -24,14 +24,17 @@ from html.parser import HTMLParser
 
 import Djvubind.utils
 
+
 class hocrParser(HTMLParser):
 
     def __init__(self):
         HTMLParser.__init__(self)
         self.boxing = []
 
-    def input(self, data):
+    def parse(self, data):
         self.data = data
+        self.feed(data)
+        return None
 
     def handle_starttag(self, tag, attrs):
         if (tag == 'br') or (tag == 'p'):
@@ -64,6 +67,70 @@ class hocrParser(HTMLParser):
 
         return None
 
+
+class boxfileParser():
+
+    def __init__(self):
+        self.boxing = []
+        self.image = ''
+
+    def parse_box(self, boxfile):
+        """
+        Parse the tesseract positional information.
+        """
+        data = []
+
+        for line in boxfile.split('\n'):
+            if (line == ''):
+                continue
+            line = line.split()
+            if len(line) != 5:
+                print('err: ocr.boxfileParser.parse_box(): The format of the boxfile is not what was expected.', file=sys.stderr)
+                sys.exit(1)
+
+            data.append({'char':line[0], 'xmin':int(line[1]), 'ymin':int(line[2]), 'xmax':int(line[3]), 'ymax':int(line[4])})
+
+        return data
+
+    def parse(self, boxfile, text):
+        boxfile = self.parse_box(boxfile)
+        textfile = [text[x:x+1] for x in range(len(text))]
+        warning_count = 0
+
+        for x in range(len(textfile)):
+            char = textfile[x]
+            if (len(boxfile) == 0):
+                break
+
+            if (char == '\n') and ((len(self.boxing) > 0) and (self.boxing[-1] != 'newline')):
+                self.boxing.append('newline')
+                continue
+            elif (char == ' ') and ((len(self.boxing) > 0) and (self.boxing[-1] != 'space')):
+                self.boxing.append('space')
+                continue
+            else:
+                if (char != boxfile[0]['char']):
+                    if (len(boxfile) >= 2) and (x+3 <= len(textfile)):
+                        # Maybe this character isn't certain (e/o/c) and we should skip to the next character in both files.
+                        if (textfile[x+1] == boxfile[1]['char']):
+                            boxfile.pop(0)
+                        # Maybe the boxfile inserted an extra character.
+                        elif (textfile[x] == boxfile[1]['char']):
+                            pass
+                        elif (warning_count == 0):
+                            warning_count = warning_count +1
+                            msg = 'wrn: tesseract produced a significant mismatch between textual data and character position data on "{0}".  This may result in partial ocr content for this page.'.format(os.path.split(self.image)[1])
+                            msg = Djvubind.utils.color(msg, 'red')
+                            print(msg, file=sys.stderr)
+                    continue
+                if (char in ['.', ',', '!', '?', ':', ';', '"']):
+                    boxfile.pop(0)
+                    continue
+                self.boxing.append(boxfile.pop(0))
+
+        return None
+
+
 class djvuWordBox:
     def __init__(self):
         self.xmax = 0
@@ -89,6 +156,7 @@ class djvuWordBox:
             print('err: ocr.djvuWordBox(): Boxing information is impossible (x/y min exceed x/y max).')
             sys.exit(1)
         return '(word {0} {1} {2} {3} "{4}")'.format(self.xmin, self.ymin, self.xmax, self.ymax, self.word)
+
 
 class djvuLineBox:
     def __init__(self):
@@ -117,6 +185,7 @@ class djvuLineBox:
         words = '\n    '.join([x.encode() for x in self.words])
         return line+'\n    '+words+')'
 
+
 class djvuPageBox:
     def __init__(self):
         self.xmax = 0
@@ -144,128 +213,8 @@ class djvuPageBox:
         lines = '\n  '.join([x.encode() for x in self.lines])
         return page+'\n  '+lines+')'
 
-def parse_box(boxfile):
-    """
-    Parse the tesseract positional information into a two dimensional array.
-    [[char, x_min, y_min, x_max, y_max], ...]
-    """
-    data = []
-
-    try:
-        with open(boxfile, 'r', encoding='utf8') as handle:
-            for line in handle:
-                line = line.split()
-                if len(line) != 5:
-                    print('err: ocr.parse_box(): The format of the boxfile is not what was expected.', file=sys.stderr)
-                    sys.exit(1)
-                data.append([line[0], int(line[1]), int(line[2]), int(line[3]), int(line[4])])
-    except IOError:
-        print('err: ocr.parse_box(): Problem with file input/output: "{0}"'.format(boxfile), file=sys.stderr)
-        sys.exit(1)
-
-    return data
-
-def get_text(image):
-    """
-    Runs tesseract on the given image, then process the data into a format that djvu will understand.
-    """
-    if image[-4:] != '.tif':
-        print('err: ocr.get_text(): tesseract is very picky and demands that the image carry a .tif extension.', file=sys.stderr)
-        sys.exit(1)
-
-    Djvubind.utils.execute('tesseract {0} page_box -l eng batch makebox &> /dev/null'.format(image))
-    Djvubind.utils.execute('tesseract {0} page_txt -l eng batch &> /dev/null'.format(image))
-
-    boxfile = parse_box('page_box.txt')
-
-    try:
-        with open('page_txt.txt', 'r', encoding='utf8') as handle:
-            page_xn = 100000
-            page_xx = 100000
-            page_yn = 0
-            page_yx = 0
-            line_buff = ''
-
-            for line in handle:
-                line = line.strip()
-                if line == '\n' or line == '':
-                    continue
-                line = line.strip()
-                words = line.split()
-                word_buff = ''
-                for word in words:
-                    word_xn = 100000
-                    word_xx = 100000
-                    word_yn = 0
-                    word_yx = 0
-                    for char in word:
-                        if len(boxfile) == 0:
-                            break
-                        # Why exactly is it important that the character be printable?  I
-                        # think this was a carry-over from the original perl script.  It
-                        # stays for now, but *seriously* needs to be experimented with.
-                        if char not in string.printable:
-                            if char == boxfile[0][0]:
-                                boxfile.pop()
-                            continue
-                        # How does it even happen that page_txt and page_box don't agree
-                        # character for character... again, *seriously* needs to be
-                        # investigated by manually comparing the files.
-                        if char != boxfile[0][0]:
-                            if len(boxfile) == 1:
-                                break
-                            if char == boxfile[1][0]:
-                                #print('wrn: mismatch between ocr text and ocr position (fixed)')
-                                boxfile.pop(0)
-                            else:
-                                pass
-                                #print('wrn: significant mismatch between ocr text and ocr position')
-                                #print('{0}, {1}, {2}'.format(word, char, boxfile[0][0]))
-                        data = boxfile.pop(0)
-
-                        if word_xn > data[1]:
-                            word_xn = data[1]
-                        if word_xx > data[2]:
-                            word_xx = data[2]
-                        if word_yn < data[3]:
-                            word_yn = data[3]
-                        if word_yx < data[4]:
-                            word_yx = data[4]
-
-                        if page_xn > data[1]:
-                            page_xn = data[1]
-                        if page_xx > data[2]:
-                            page_xx = data[2]
-                        if page_yn < data[3]:
-                            page_yn = data[3]
-                        if page_yx < data[4]:
-                            page_yx = data[4]
-                    # Bad things happen if the boundary box is screwed up
-                    if (word_xn == 100000) and (word_yn == 0):
-                        continue
-                    word = word.replace('"', '')
-                    word = word.replace("'", "")
-                    word = word.replace('\\', '')
-                    word_buff = '%s\n  (word %s %s %s %s "%s")' % (word_buff, word_xn, word_xx, word_yn, word_yx, word)
-                # Bad things happen if the line has no words
-                if (word_xn == 100000) and (word_yn == 0):
-                    continue
-                else:
-                    line_buff = '%s\n (line %s %s %s %s\n%s)' % (line_buff, word_xn, word_xx, word_yn, word_yx, word_buff)
-            page_buff = '(page %s %s %s %s\n%s)\n' % (page_xn, page_xx, page_yn, page_yx, line_buff)
-    except IOError:
-        print('err: ocr.get_text(): Problem with file input/output: "page_txt.txt"', file=sys.stderr)
-        sys.exit(1)
-
-    os.remove('page_box.txt')
-    os.remove('page_txt.txt')
-
-    return page_buff
-
 
 def ocr(image, engine='tesseract'):
-    page = djvuPageBox()
-
     if (engine == 'cuneiform'):
         try:
             status = Djvubind.utils.execute('cuneiform -f "hocr" -o "{0}.hocr" --singlecolumn "{0}" &> /dev/null'.format(image))
@@ -287,46 +236,58 @@ def ocr(image, engine='tesseract'):
         with open('{0}.hocr'.format(image), 'r', encoding='utf8') as handle:
             text = handle.read()
 
+        basename = os.path.split(image)[1].split('.')[0]
+        if os.path.isdir(basename+'_files'):
+            shutil.rmtree(basename+'_files')
+        os.remove(image+'.hocr')
+
         parser = hocrParser()
-        parser.input(text)
-        parser.feed(text)
+        parser.parse(text)
 
         # Cuneiform hocr inverts the y-axis compared to what djvu expects.  The total height of the
         # image is needed to invert the values.  Better to get it now once rather than in the loop
         # where it is used.
         height = int(Djvubind.utils.execute('identify -format %H "{0}"'.format(image), capture=True))
 
-        line = djvuLineBox()
-        word = djvuWordBox()
-        for entry in parser.boxing:
-            if entry == 'newline':
-                if (line.words != []):
-                    page.add_line(line)
-                line = djvuLineBox()
-                word = djvuWordBox()
-            elif entry == 'space':
-                if (word.word != ''):
-                    line.add_word(word)
-                word = djvuWordBox()
-            else:
-                # Invert the y-axis
-                ymin, ymax = entry['ymin'], entry['ymax']
-                entry['ymin'] = height - ymax
-                entry['ymax'] = height - ymin
-                word.add_char(entry)
-
-        basename = os.path.split(image)[1].split('.')[0]
-        if os.path.isdir(basename+'_files'):
-            shutil.rmtree(basename+'_files')
-        os.remove(image+'.hocr')
-
     elif (engine == 'tesseract'):
-        # Run the old code for now.  In future, rework to use djvuPageBox
-        return get_text(image)
+        basename = os.path.split(image)[1].split('.')[0]
+        Djvubind.utils.execute('tesseract {0} {1}_box -l eng batch makebox &> /dev/null'.format(image, basename))
+        Djvubind.utils.execute('tesseract {0} {1}_txt -l eng batch &> /dev/null'.format(image, basename))
+
+        with open(basename+'_box.txt', 'r', encoding='utf8') as handle:
+            boxfile = handle.read()
+        with open(basename+'_txt.txt', 'r', encoding='utf8') as handle:
+            textfile = handle.read()
+        os.remove(basename+'_box.txt')
+        os.remove(basename+'_txt.txt')
+
+        parser = boxfileParser()
+        parser.image = image
+        parser.parse(boxfile, textfile)
 
     else:
         print('err: ocr.ocr(): Specified ocr engine is not supported.', file=sys.stderr)
         sys.exit(1)
+
+    page = djvuPageBox()
+    line = djvuLineBox()
+    word = djvuWordBox()
+    for entry in parser.boxing:
+        if entry == 'newline':
+            if (line.words != []):
+                page.add_line(line)
+            line = djvuLineBox()
+            word = djvuWordBox()
+        elif entry == 'space':
+            if (word.word != ''):
+                line.add_word(word)
+            word = djvuWordBox()
+        else:
+            if (engine == 'cuneiform'):
+                ymin, ymax = entry['ymin'], entry['ymax']
+                entry['ymin'] = height - ymax
+                entry['ymax'] = height - ymin
+            word.add_char(entry)
 
     if (page.lines != []):
         return page.encode()
