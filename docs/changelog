@@ -1,6 +1,7 @@
 v0.2.0
 
 * Support for the cuneiform ocr engine.
+* Bug Fix: Hopeful resolved issue of "file not found" messages (issue 4)
 
 ======
 v0.1.3

@@ -214,10 +214,10 @@ class djvuPageBox:
         return page+'\n  '+lines+')'
 
 
-def ocr(image, engine='tesseract'):
+def ocr(image, engine='tesseract', options={'tesseract':'-l eng', 'cuneiform':'--singlecolumn'}):
     if (engine == 'cuneiform'):
         try:
-            status = Djvubind.utils.execute('cuneiform -f "hocr" -o "{0}.hocr" --singlecolumn "{0}" &> /dev/null'.format(image))
+            status = Djvubind.utils.execute('cuneiform -f "hocr" -o "{0}.hocr" {1} "{0}" &> /dev/null'.format(image, options['cuneiform']))
             if status == 134:
                 # Cuneiform seems to have a buffer flow on every other image, and even more without the --singlecolumn option.
                 msg = 'wrn: cuneiform encountered a buffer overflow on "{0}".  Ocr on this image will be done with tesseract.'.format(os.path.split(image)[1])
@@ -251,8 +251,8 @@ def ocr(image, engine='tesseract'):
 
     elif (engine == 'tesseract'):
         basename = os.path.split(image)[1].split('.')[0]
-        Djvubind.utils.execute('tesseract {0} {1}_box -l eng batch makebox &> /dev/null'.format(image, basename))
-        Djvubind.utils.execute('tesseract {0} {1}_txt -l eng batch &> /dev/null'.format(image, basename))
+        Djvubind.utils.execute('tesseract {0} {1}_box {2} batch makebox &> /dev/null'.format(image, basename, options['tesseract']))
+        Djvubind.utils.execute('tesseract {0} {1}_txt {2} batch &> /dev/null'.format(image, basename, options['tesseract']))
 
         with open(basename+'_box.txt', 'r', encoding='utf8') as handle:
             boxfile = handle.read()
