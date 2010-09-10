@@ -11,7 +11,8 @@ tesseract
 cuneiform
 
 You could forgo having tesseract and cuneiform installed so long as you always use the
---no-ocr option.
+--no-ocr option.  Also, you could forgo having cuneiform installed, but tesseract is
+always needed if doing ocr, since it is used as the fallback engine if cuneiform crashes.
 
 ========
 Installation

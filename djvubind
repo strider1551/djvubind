@@ -51,12 +51,17 @@ if __name__ == '__main__':
         sys.exit(1)
 
     # Dependency check
-    deps = ['cpaldjvu', 'djvm', 'djvused', 'identify', 'minidjvu', 'tesseract', 'cuneiform']
+    deps = ['cpaldjvu', 'djvm', 'djvused', 'identify', 'minidjvu']
     for dep in deps:
-        if ((dep == 'tesseract') or (dep == 'cuneiform')) and (options.no_ocr):
-            continue
         if (not Djvubind.utils.is_executable(dep)):
-            print('err: __main__: external dependency ({0}) cannot be found'.format(dep), file=sys.stderr)
+            print('err: __main__: external dependency ({0}) cannot be found.'.format(dep), file=sys.stderr)
+            sys.exit(1)
+    if not options.no_ocr:
+        if (not Djvubind.utils.is_executable(options.ocr_engine)):
+            print('err: __main__: ocr engine ({0}) cannot be found.  Use --no-ocr if you do not need ocr.'.format(dep), file=sys.stderr)
+            sys.exit(1)
+        if (options.ocr_engine != 'tesseract') and (not Djvubind.utils.is_executable('tesseract')):
+            print('err: __main__: tesseract is the fallback ocr engine and cannot be found.  Use --no-ocr if you do not need ocr.'.format(dep), file=sys.stderr)
             sys.exit(1)
 
     # Change working directory if necessary
