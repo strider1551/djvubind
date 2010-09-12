@@ -76,6 +76,9 @@ class Page:
         return None
 
     def ocr(self, engine, ocr_options):
+        # Note: This should really be moved to ocr.py, now that we have multiple ocr
+        # engines which probably don't have the same filename/filetype requirements as
+        # tesseract.
         if self.path.split('.')[-1] in ['jpg', 'jpeg']:
             Djvubind.utils.execute('convert "{0}" "{0}.tif"'.format(self.path))
             self.text = Djvubind.ocr.ocr(self.path+'.tif', engine, ocr_options)

@@ -15,6 +15,7 @@
 #       Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #       MA 02110-1301, USA.
 
+import difflib
 import os
 import shutil
 import string
@@ -92,8 +93,49 @@ class boxfileParser():
 
         return data
 
+    def resolve(self, boxdata, text):
+        # Convert the boxing information into a plain text string with no bounding information.
+        boxtext = ''
+        for entry in boxdata:
+            boxtext = boxtext + entry['char']
+        # Remove spacing and newlines from the readable text because the boxing data doesn't have those.
+        text = text.replace(' ', '')
+        text = text.replace('\n', '')
+
+        # Figure out what changes are needed, but don't do them immediately since it would
+        # change the boxdata index and screw up the next action.
+        diff = difflib.SequenceMatcher(None, boxtext, text)
+        queu = []
+        for action, a_start, a_end, b_start, b_end in diff.get_opcodes():
+            entry = boxdata[a_start]
+            item = {'action':action, 'target':entry, 'boxtext':boxtext[a_start:a_end], 'text':text[b_start:b_end]}
+            queu.append(item)
+
+        # Make necessary changes
+        for change in queu:
+            if (change['action'] == 'replace'):
+                if (len(change['boxtext']) == 1) and (len(change['text']) == 1):
+                    index = boxdata.index(change['target'])
+                    boxdata[index]['char'] = change['text']
+                elif (len(change['boxtext']) > 1) and (len(change['text']) == 1):
+                    pass
+                elif (len(change['boxtext']) == 1) and (len(change['text']) > 1):
+                    pass
+                elif (len(change['boxtext']) > 1) and (len(change['text']) > 1):
+                    pass
+            elif (change['action'] == 'delete'):
+                index = boxdata.index(change['target'])
+                deletions = boxdata[index:index+len(change['boxtext'])]
+                for target in deletions:
+                    boxdata.remove(target)
+            elif (change['action'] == 'insert'):
+                pass
+
+        return boxdata
+
     def parse(self, boxfile, text):
         boxfile = self.parse_box(boxfile)
+        boxfile = self.resolve(boxfile, text)
         textfile = [text[x:x+1] for x in range(len(text))]
         warning_count = 0
 
@@ -102,11 +144,13 @@ class boxfileParser():
             if (len(boxfile) == 0):
                 break
 
-            if (char == '\n') and ((len(self.boxing) > 0) and (self.boxing[-1] != 'newline')):
-                self.boxing.append('newline')
+            if (char == '\n'):
+                if (len(self.boxing) > 0) and (self.boxing[-1] != 'newline'):
+                    self.boxing.append('newline')
                 continue
-            elif (char == ' ') and ((len(self.boxing) > 0) and (self.boxing[-1] != 'space')):
-                self.boxing.append('space')
+            elif (char == ' '):
+                if (len(self.boxing) > 0) and (self.boxing[-1] != 'space'):
+                    self.boxing.append('space')
                 continue
             else:
                 if (char != boxfile[0]['char']):
@@ -236,7 +280,11 @@ def ocr(image, engine='tesseract', options={'tesseract':'-l eng', 'cuneiform':'-
         with open('{0}.hocr'.format(image), 'r', encoding='utf8') as handle:
             text = handle.read()
 
-        basename = os.path.split(image)[1].split('.')[0]
+        # Sometimes filenames have multiple periods, especially when using tesseract
+        # and 'image.tiff' was copied to 'image.tiff.tif'
+        basename = os.path.split(image)[1]
+        basename = basename.split('.')[:-1]
+        basename = '.'.join(basename)
         if os.path.isdir(basename+'_files'):
             shutil.rmtree(basename+'_files')
         os.remove(image+'.hocr')
