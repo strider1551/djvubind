@@ -118,17 +118,26 @@ class boxfileParser():
                     index = boxdata.index(change['target'])
                     boxdata[index]['char'] = change['text']
                 elif (len(change['boxtext']) > 1) and (len(change['text']) == 1):
+                    # Combine the boxing data
                     pass
                 elif (len(change['boxtext']) == 1) and (len(change['text']) > 1):
+                    # Use the same boxing data.  Will djvused complain that character
+                    # boxes overlap?
                     pass
                 elif (len(change['boxtext']) > 1) and (len(change['text']) > 1):
-                    pass
+                    if (len(change['boxtext']) == len(change['text'])):
+                        pass
+                    else:
+                        pass
             elif (change['action'] == 'delete'):
                 index = boxdata.index(change['target'])
                 deletions = boxdata[index:index+len(change['boxtext'])]
                 for target in deletions:
                     boxdata.remove(target)
             elif (change['action'] == 'insert'):
+                # Use the boundaries of previous and next characters to guess at a boundary
+                # box.  If it is multiple characters, will djvused complain that character
+                # boxes overlap?
                 pass
 
         return boxdata

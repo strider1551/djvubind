@@ -96,6 +96,9 @@ if __name__ == '__main__':
     if len(glob.glob(temp_dir+'/*')) > 0:
         os.chdir(temp_dir)
         Djvubind.utils.execute('minidjvu --dpi {0} --pages-per-dict 100 * book.djvu'.format(book.dpi))
+        # If this is a second run, there may still be an old book.djvu in the parent directory.
+        if os.path.isfile('../book.djvu'):
+            os.remove('../book.djvu')
         for filename in glob.glob('*'):
             shutil.move(filename, '../')
         os.chdir('../')

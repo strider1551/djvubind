@@ -1,6 +1,8 @@
 v0.2.1
 
+* Bug Fix: djvubind should overwrite an existing book.djvu (issue 11)
 * Bug Fix: Cuneiform was not deleted temporary folders in some circumstances (issue 10)
+* Bug Fix: Cuneiform should not be a mandatory dependency (issue 7)
 
 ======
 v0.2.0
