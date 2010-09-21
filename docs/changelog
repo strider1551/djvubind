@@ -1,5 +1,6 @@
 v0.2.1
 
+* Bug Fix: better resolution of tesseract inconsistancies (issue 6)
 * Bug Fix: djvubind should overwrite an existing book.djvu (issue 11)
 * Bug Fix: Cuneiform was not deleted temporary folders in some circumstances (issue 10)
 * Bug Fix: Cuneiform should not be a mandatory dependency (issue 7)

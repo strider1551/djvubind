@@ -115,30 +115,59 @@ class boxfileParser():
         for change in queu:
             if (change['action'] == 'replace'):
                 if (len(change['boxtext']) == 1) and (len(change['text']) == 1):
+                    print('case 01')
                     index = boxdata.index(change['target'])
                     boxdata[index]['char'] = change['text']
                 elif (len(change['boxtext']) > 1) and (len(change['text']) == 1):
                     # Combine the boxing data
-                    pass
+                    print('case 02')
+                    index = boxdata.index(change['target'])
+                    new = {'char':'', 'xmin':0, 'ymin':0, 'xmax':0, 'ymax':0}
+                    new['char'] = change['text']
+                    new['xmin'] = min([x['xmin'] for x in boxdata[index:index+len(change['boxtext'])]])
+                    new['ymin'] = min([x['ymin'] for x in boxdata[index:index+len(change['boxtext'])]])
+                    new['xmax'] = min([x['xmax'] for x in boxdata[index:index+len(change['boxtext'])]])
+                    new['ymax'] = min([x['ymax'] for x in boxdata[index:index+len(change['boxtext'])]])
+                    del(boxdata[index:index+len(change['boxtext'])])
+                    boxdata.insert(index, new)
                 elif (len(change['boxtext']) == 1) and (len(change['text']) > 1):
                     # Use the same boxing data.  Will djvused complain that character
                     # boxes overlap?
-                    pass
+                    print('case 03')
+                    index = boxdata.index(change['target'])
+                    del(boxdata[index])
+                    i = 0
+                    for char in list(change['text']):
+                        new = {'char':char, 'xmin':change['target']['xmin'], 'ymin':change['target']['ymin'], 'xmax':change['target']['xmax'], 'ymax':change['target']['ymax']}
+                        boxdata.insert(index+i, new)
+                        i = i + 1
                 elif (len(change['boxtext']) > 1) and (len(change['text']) > 1):
                     if (len(change['boxtext']) == len(change['text'])):
-                        pass
+                        print('case 04')
+                        index = boxdata.index(change['target'])
+                        for char in list(change['text']):
+                            boxdata[index]['char'] = char
+                            index = index + 1
                     else:
+                        print('err: Djvubind.ocr.boxfileParser.resolve(): Complex replacement that shouldn\'t happen in real life.', file=sys.err)
                         pass
             elif (change['action'] == 'delete'):
+                print('case 06')
                 index = boxdata.index(change['target'])
                 deletions = boxdata[index:index+len(change['boxtext'])]
                 for target in deletions:
                     boxdata.remove(target)
             elif (change['action'] == 'insert'):
-                # Use the boundaries of previous and next characters to guess at a boundary
-                # box.  If it is multiple characters, will djvused complain that character
-                # boxes overlap?
-                pass
+                # *Don't* use the boundaries of previous and next characters to guess at a boundary
+                # box.  Things would be ugly if the next character happened to be on a new line.
+                # Just duplicate the boundaries of the previous character
+                print('case 07')
+                index = boxdata.index(change['target'])
+                i = 0
+                for char in list(change['text']):
+                    new = {'char':char, 'xmin':change['target']['xmin'], 'ymin':change['target']['ymin'], 'xmax':change['target']['xmax'], 'ymax':change['target']['ymax']}
+                    boxdata.insert(index+i, new)
+                    i = i + 1
 
         return boxdata
 
