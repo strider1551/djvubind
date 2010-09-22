@@ -54,8 +54,11 @@ def execute(cmd, capture=False):
         sys.exit(1)
 
     if capture:
-        return s.stdout.read()
+        text = s.stdout.read()
+        del(s)
+        return text
     else:
+        del(s)
         return status
 
 def list_files(dir='.', filter=None, extension=None):
