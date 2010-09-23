@@ -17,9 +17,42 @@
 import os
 import shutil
 import sys
+import threading
+import queue
 
 import Djvubind.ocr
 import Djvubind.utils
+
+class QueueRunner(threading.Thread):
+    def __init__(self, q, pagecount, engine, no_ocr=False, ocr_options={}):
+        threading.Thread.__init__(self)
+        self.queue = q
+        self.no_ocr = no_ocr
+        self.engine = engine
+        self.ocr_options = ocr_options
+        self.pagecount = pagecount
+
+        self.quit = False
+
+    def run(self):
+        while not self.quit:
+            try:
+                # Process the page
+                page = self.queue.get()
+                page.is_bitonal()
+                page.get_dpi()
+                if not self.no_ocr:
+                    page.ocr(self.engine, self.ocr_options)
+
+                # Report completion percentage.
+                # N.b., this is perfect, since queue.qsize() isn't completely reliable in a threaded
+                # environment, but it will do well enough to give the user and idea of where we are.
+                position = ( (self.pagecount - self.queue.qsize()) / self.pagecount ) * 100
+                print('  {0:.2f}% completed.       '.format(position), end='\r')
+            except queue.Empty:
+                self.quit = True
+            finally:
+                self.queue.task_done()
 
 class Book:
     def __init__(self):
@@ -31,26 +64,35 @@ class Book:
         return None
 
     def analyze(self, ocr_engine, no_ocr=False, ocr_options={}):
-        for index in range(len(self.pages)):
-            position = (float(index)/len(self.pages))*100
-            print('  {0:.2f}%   {1}   [   ] Initializing.                '.format(position, os.path.split(self.pages[index].path)[1]), end='\r')
-            print('  {0:.2f}%   {1}   [   ] Checking if image is bitonal.'.format(position, os.path.split(self.pages[index].path)[1]), end='\r')
-            self.pages[index].is_bitonal()
+        # Create queu and populate with pages to process
+        q = queue.Queue()
+        for i in self.pages:
+            q.put(i)
 
-            print('  {0:.2f}%   {1}   [+  ] Finding image dpi.           '.format(position, os.path.split(self.pages[index].path)[1]), end='\r')
-            self.pages[index].get_dpi()
-            if (self.dpi is not None) and (self.pages[index].dpi != self.dpi):
-                print("wrn: organizer.Book.insert_page(): page dpi is different from the previous page.  If you encounter problems with minidjvu, this is probably why.", file=sys.stderr)
-                print("wrn: {0}".format(path))
-            self.dpi = self.pages[index].dpi
+        # Detect number of available cpus
+        ncpus = os.sysconf("SC_NPROCESSORS_ONLN")
+        if not isinstance(ncpus, int) or ncpus <= 0:
+            ncpus = 1
+        print('  Spawning {0} processing threads.'.format(ncpus))
+        print('  {0:.2f}% completed.       '.format(0), end='\r')
 
-            if no_ocr:
-                print('  {0:.2f}%   {1}   [++ ] Skipping OCR.                '.format(position, os.path.split(self.pages[index].path)[1]), end='\r')
-            else:
-                print('  {0:.2f}%   {1}   [++ ] Running OCR.                 '.format(position, os.path.split(self.pages[index].path)[1]), end='\r')
-                self.pages[index].ocr(ocr_engine, ocr_options)
+        # Create threads to process the pages in queue
+        for i in range(ncpus):
+            p = QueueRunner(q, len(self.pages), ocr_engine, no_ocr, ocr_options)
+            p.daemon = True
+            p.start()
 
-            print('                                                     '.format(position, os.path.split(self.pages[index].path)[1]), end='\r')
+        # Wait for everything to digest
+        q.join()
+
+        # Figure out the book's dpi
+        for page in self.pages:
+            if (self.dpi is not None) and (page.dpi != self.dpi):
+                print("wrn: {0}".format(page.path))
+                print("wrn: organizer.Book.analyze(): page dpi is different from the previous page.  If you encounter problems with minidjvu, this is probably why.", file=sys.stderr)
+            self.dpi = page.dpi
+
+        return None
 
 class Page:
     def __init__(self, path):
