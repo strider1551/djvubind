@@ -33,6 +33,50 @@ def color(text, color):
 
     return text
 
+def separate_cmd(cmd):
+    """
+    Convert a subprocess command string into a list, intelligently handling arguments
+    enclosed in single or double quotes.
+    """
+
+    cmd = list(cmd)
+    buffer = ''
+    out = []
+    switch = [False, '']
+
+    for x in range(len(cmd)):
+        char = cmd[x]
+        if char == ' ' and not switch[0]:
+            out.append(buffer)
+            buffer = ''
+        # Be wary of a single/double quote that is part of a filename and not part of an
+        # enclosing pair
+        elif (char == '"' or char == "'") and not switch[0]:
+            if (char in cmd[x+1:]) and (buffer == ''):
+                switch[0] = True
+                switch[1] = char
+            else:
+                buffer = buffer + char
+        elif char == switch[1] and switch[0]:
+            out.append(buffer)
+            buffer = ''
+            switch[0] = False
+        else:
+            buffer = buffer + char
+    out.append(buffer)
+
+    # Just in case there were multiple spaces.
+    while '' in out:
+        out.remove('')
+
+    return out
+
+def simple_exec(cmd):
+    cmd = separate_cmd(cmd)
+    with open('/dev/null', 'w') as void:
+        sub = subprocess.Popen(cmd, shell=False, stdout=void, stderr=void)
+        return int(sub.wait())
+
 def execute(cmd, capture=False):
     """Execute a command line process."""
     #print('>>> {0}'.format(cmd))
@@ -82,7 +126,7 @@ def list_files(dir='.', filter=None, extension=None):
         remove = []
         for file in contents:
             ext = file.split('.')[-1]
-            if extension != ext.lower():
+            if extension.lower() != ext.lower():
                 remove.append(file)
         for file in remove:
             contents.remove(file)

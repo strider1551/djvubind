@@ -298,22 +298,21 @@ class djvuPageBox:
 
 def ocr(image, engine='tesseract', options={'tesseract':'-l eng', 'cuneiform':'--singlecolumn'}):
     if (engine == 'cuneiform'):
-        try:
-            status = Djvubind.utils.execute('cuneiform -f "hocr" -o "{0}.hocr" {1} "{0}" &> /dev/null'.format(image, options['cuneiform']))
-            if status == 134:
+        status = Djvubind.utils.simple_exec('cuneiform -f hocr -o "{0}.hocr" {1} "{0}"'.format(image, options['cuneiform']))
+        if status != 0:
+            if status == -6:
                 # Cuneiform seems to have a buffer flow on every other image, and even more without the --singlecolumn option.
-                msg = 'wrn: cuneiform encountered a buffer overflow on "{0}".  Ocr on this image will be done with tesseract.'.format(os.path.split(image)[1])
+                msg = '\nwrn: cuneiform encountered a buffer overflow on "{0}".  Ocr on this image will be done with tesseract.'.format(os.path.split(image)[1])
                 msg = Djvubind.utils.color(msg, 'red')
                 print(msg, file=sys.stderr)
-                return ocr(image, engine='tesseract')
-        except:
-            # Cuneiform crashes on blank images (exit status 1, message about failing to detect something).
-            # They do not consider this behavior a bug. See https://bugs.launchpad.net/cuneiform-linux/+bug/445357
-            msg = 'wrn: cuneiform crashed on "{0}", which likely means the image is blank.  No ocr will be done.'.format(os.path.split(image)[1])
-            msg = Djvubind.utils.color(msg, 'red')
-            print(msg, file=sys.stderr)
-            with open('{0}.hocr'.format(image), 'w', encoding='utf8') as handle:
-                handle.write('')
+            else:
+                # Cuneiform crashes on blank images (exit status 1, message about failing to detect something).
+                # They do not consider this behavior a bug. See https://bugs.launchpad.net/cuneiform-linux/+bug/445357
+                # Also, it seems that <=cuneiform-0.7.0 can only process bmp images.
+                msg = 'wrn: cuneiform crashed on "{0}".  Ocr on this image will be done with tesseract.'.format(os.path.split(image)[1])
+                msg = Djvubind.utils.color(msg, 'red')
+                print(msg, file=sys.stderr)
+            return ocr(image, engine='tesseract')
 
         with open('{0}.hocr'.format(image), 'r', encoding='utf8') as handle:
             text = handle.read()
@@ -337,8 +336,13 @@ def ocr(image, engine='tesseract', options={'tesseract':'-l eng', 'cuneiform':'-
 
     elif (engine == 'tesseract'):
         basename = os.path.split(image)[1].split('.')[0]
-        Djvubind.utils.execute('tesseract {0} {1}_box {2} batch makebox &> /dev/null'.format(image, basename, options['tesseract']))
-        Djvubind.utils.execute('tesseract {0} {1}_txt {2} batch &> /dev/null'.format(image, basename, options['tesseract']))
+        status_a = Djvubind.utils.simple_exec('tesseract "{0}" "{1}_box" {2} batch makebox'.format(image, basename, options['tesseract']))
+        status_b = Djvubind.utils.simple_exec('tesseract "{0}" "{1}_txt" {2} batch'.format(image, basename, options['tesseract']))
+        if (status_a != 0) or (status_b != 0):
+            msg = 'wrn: Tesseract failed on "{0}".  There will be no ocr for this page.'.format(os.path.split(image)[1])
+            msg = Djvubind.utils.color(msg, 'red')
+            print(msg, file=sys.stderr)
+            return ''
 
         with open(basename+'_box.txt', 'r', encoding='utf8') as handle:
             boxfile = handle.read()

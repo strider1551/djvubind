@@ -108,18 +108,18 @@ if __name__ == '__main__':
     print('{0} Compressing and inserting non-bitonal pages.'.format(Djvubind.utils.color('*', 'green')))
     for page in book.pages:
         if not page.bitonal:
-            Djvubind.utils.execute('convert -opaque black "{0}" "temp_graphics.tif"'.format(page.path))
-            Djvubind.utils.execute('convert +opaque black "{0}" "temp_textual.tif"'.format(page.path))
-            Djvubind.utils.execute('cjb2 temp_textual.tif temp_textual.djvu')
-            Djvubind.utils.execute('ddjvu -format=rle -v temp_textual.djvu temp_textual.rle &> /dev/null')
-            Djvubind.utils.execute('convert temp_graphics.tif temp_graphics.ppm')
-            Djvubind.utils.execute('cat temp_textual.rle temp_graphics.ppm > temp_merge.mix')
-            Djvubind.utils.execute('csepdjvu -d {0} temp_merge.mix temp_final.djvu &> /dev/null'.format(page.dpi))
+            Djvubind.utils.simple_exec('convert -opaque black "{0}" "temp_graphics.tif"'.format(page.path))
+            Djvubind.utils.simple_exec('convert +opaque black "{0}" "temp_textual.tif"'.format(page.path))
+            Djvubind.utils.simple_exec('cjb2 temp_textual.tif temp_textual.djvu')
+            Djvubind.utils.simple_exec('ddjvu -format=rle -v temp_textual.djvu temp_textual.rle &> /dev/null')
+            Djvubind.utils.simple_exec('convert temp_graphics.tif temp_graphics.ppm')
+            Djvubind.utils.simple_exec('cat temp_textual.rle temp_graphics.ppm > temp_merge.mix')
+            Djvubind.utils.simple_exec('csepdjvu -d {0} temp_merge.mix temp_final.djvu &> /dev/null'.format(page.dpi))
             if (not os.path.isfile('book.djvu')):
                 shutil.move('temp_final.djvu', 'book.djvu')
             else:
                 page_number = book.pages.index(page)
-                Djvubind.utils.execute('djvm -i book.djvu "temp_final.djvu" {0}'.format(page_number+1))
+                Djvubind.utils.simple_exec('djvm -i book.djvu "temp_final.djvu" {0}'.format(page_number+1))
             for tempfile in glob.glob('temp_*'):
                 os.remove(tempfile)
 
@@ -131,25 +131,25 @@ if __name__ == '__main__':
             handle.write(page.text)
             handle.close()
             page_number = book.pages.index(page)+1
-            Djvubind.utils.execute('djvused -e "select {0}; remove-txt; set-txt \'ocr.txt\'; save" book.djvu'.format(page_number))
+            Djvubind.utils.simple_exec('djvused -e "select {0}; remove-txt; set-txt \'ocr.txt\'; save" book.djvu'.format(page_number))
             os.remove('ocr.txt')
 
     # Insert front/back covers, metadata, and bookmarks
     if os.path.isfile(options.cover_front):
         print('{0} Inserting front cover.'.format(Djvubind.utils.color('*', 'green')))
         dpi = int(Djvubind.utils.execute("identify -format '%x' {0} | awk '{{print $1}}'".format(options.cover_front), capture=True))
-        Djvubind.utils.execute('c44 -dpi {0} "{1}" "{1}.djvu"'.format(dpi, options.cover_front))
-        Djvubind.utils.execute('djvm -i book.djvu "{0}.djvu" 1'.format(options.cover_front))
+        Djvubind.utils.simple_exec('c44 -dpi {0} "{1}" "{1}.djvu"'.format(dpi, options.cover_front))
+        Djvubind.utils.simple_exec('djvm -i book.djvu "{0}.djvu" 1'.format(options.cover_front))
         os.remove('{0}.djvu'.format(options.cover_front))
     if os.path.isfile(options.cover_back):
         print('{0} Inserting back cover.'.format(Djvubind.utils.color('*', 'green')))
         dpi = int(Djvubind.utils.execute("identify -format '%x' {0} | awk '{{print $1}}'".format(options.cover_back), capture=True))
-        Djvubind.utils.execute('c44 -dpi {0} "{1}" "{1}.djvu"'.format(dpi, options.cover_back))
-        Djvubind.utils.execute('djvm -i book.djvu "{0}.djvu" -1'.format(options.cover_back))
+        Djvubind.utils.simple_exec('c44 -dpi {0} "{1}" "{1}.djvu"'.format(dpi, options.cover_back))
+        Djvubind.utils.simple_exec('djvm -i book.djvu "{0}.djvu" -1'.format(options.cover_back))
         os.remove('{0}.djvu'.format(options.cover_back))
     if os.path.isfile(options.metadata):
         print('{0} Inserting metadata.'.format(Djvubind.utils.color('*', 'green')))
-        Djvubind.utils.execute('djvused -e "set-meta {0}; save" book.djvu'.format(options.metadata))
+        Djvubind.utils.simple_exec('djvused -e "set-meta {0}; save" book.djvu'.format(options.metadata))
     if os.path.isfile(options.bookmarks):
         print('{0} Inserting bookmarks.'.format(Djvubind.utils.color('*', 'green')))
-        Djvubind.utils.execute('djvused -e "set-outline {0}; save" book.djvu'.format(options.bookmarks))
+        Djvubind.utils.simple_exec('djvused -e "set-outline {0}; save" book.djvu'.format(options.bookmarks))
