@@ -1,6 +1,7 @@
 v0.3.0
 
 * Threaded page analysis for performance boost on multicore machines.
+* Bug Fix: IOErrors (issue 4 and issue 12)
 
 ======
 v0.2.1

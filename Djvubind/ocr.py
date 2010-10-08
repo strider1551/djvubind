@@ -145,7 +145,7 @@ class boxfileParser():
                             boxdata[index]['char'] = char
                             index = index + 1
                     else:
-                        print('err: Djvubind.ocr.boxfileParser.resolve(): Complex replacement on "{0}" that shouldn\'t happen in real life.'.format(self.image), file=sys.stderr)
+                        print('err: Djvubind.ocr.boxfileParser.resolve(): Complex replacement on "{0}" that shouldn\'t happen in real life.'.format(os.path.split(self.image)[1]), file=sys.stderr)
                         pass
             elif (change['action'] == 'delete'):
                 index = boxdata.index(change['target'])

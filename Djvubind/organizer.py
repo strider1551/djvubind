@@ -17,11 +17,17 @@
 import os
 import shutil
 import sys
+import signal
+import time
 import threading
 import queue
 
 import Djvubind.ocr
 import Djvubind.utils
+
+def signal_handler(signal, frame):
+    print('You pressed Ctrl-C!')
+    sys.exit(0)
 
 class QueueRunner(threading.Thread):
     def __init__(self, q, pagecount, engine, no_ocr=False, ocr_options={}):
@@ -82,7 +88,15 @@ class Book:
             p.daemon = True
             p.start()
 
-        # Wait for everything to digest
+        # Wait for everything to digest.  Note that we don't simply call q.join()
+        # because it blocks, preventing something like ctrl-c from killing the
+        # program.
+        while not q.empty():
+            try:
+                time.sleep(1)
+            except KeyboardInterrupt:
+                print('')
+                sys.exit(1)
         q.join()
 
         # Figure out the book's dpi

@@ -111,10 +111,10 @@ if __name__ == '__main__':
             Djvubind.utils.simple_exec('convert -opaque black "{0}" "temp_graphics.tif"'.format(page.path))
             Djvubind.utils.simple_exec('convert +opaque black "{0}" "temp_textual.tif"'.format(page.path))
             Djvubind.utils.simple_exec('cjb2 temp_textual.tif temp_textual.djvu')
-            Djvubind.utils.simple_exec('ddjvu -format=rle -v temp_textual.djvu temp_textual.rle &> /dev/null')
+            Djvubind.utils.simple_exec('ddjvu -format=rle -v temp_textual.djvu temp_textual.rle')
             Djvubind.utils.simple_exec('convert temp_graphics.tif temp_graphics.ppm')
-            Djvubind.utils.simple_exec('cat temp_textual.rle temp_graphics.ppm > temp_merge.mix')
-            Djvubind.utils.simple_exec('csepdjvu -d {0} temp_merge.mix temp_final.djvu &> /dev/null'.format(page.dpi))
+            Djvubind.utils.execute('cat temp_textual.rle temp_graphics.ppm > temp_merge.mix')
+            Djvubind.utils.simple_exec('csepdjvu -d {0} temp_merge.mix temp_final.djvu'.format(page.dpi))
             if (not os.path.isfile('book.djvu')):
                 shutil.move('temp_final.djvu', 'book.djvu')
             else:
