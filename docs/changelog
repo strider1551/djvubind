@@ -2,6 +2,7 @@ v0.3.0
 
 * Threaded page analysis for performance boost on multicore machines.
 * Bug Fix: IOErrors (issue 4 and issue 12)
+* Bug Fix: Breaks symbolic links (issue 13)
 
 ======
 v0.2.1

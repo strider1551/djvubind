@@ -117,12 +117,12 @@ class Page:
         self.text = ''
 
     def get_dpi(self):
-        dpi = Djvubind.utils.execute("identify -format '%x' {0} | awk '{{print $1}}'".format(self.path), capture=True)
+        dpi = Djvubind.utils.execute("identify -format '%x' '{0}' | awk '{{print $1}}'".format(self.path), capture=True)
         self.dpi = int(dpi)
         return None
 
     def is_bitonal(self):
-        if (Djvubind.utils.execute("identify -verbose {0} | grep 'Base type' | awk '{{print $3}}'".format(self.path), capture=True) != b'Bilevel\n'):
+        if (Djvubind.utils.execute("identify -verbose '{0}' | grep 'Base type' | awk '{{print $3}}'".format(self.path), capture=True) != b'Bilevel\n'):
             self.bitonal = False
         else:
             if (Djvubind.utils.execute('identify -format %z "{0}"'.format(self.path), capture=True) != b'1\n'):

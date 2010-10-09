@@ -33,6 +33,34 @@ def color(text, color):
 
     return text
 
+def split_cmd(start, files, end=''):
+    """
+    Rumor has it that Windows has a character limit of a little more than 32,000 for commands.[1]
+    Linux seems to vary based on kernel settings and whatnot, but tends to be more in the millions.[2]
+    Supposing the images are named 'page_0001.tif', we can hit that limit very quickly.  For the
+    sake of being safe, we will split things up at the 32,000 mark.
+
+    [1] http://stackoverflow.com/questions/2381241/what-is-the-subprocess-popen-max-length-of-the-args-parameter
+    [2] http://www.linuxjournal.com/article/6060
+    """
+
+    cmds = []
+    start = start + ' '
+    end = ' ' + end
+
+    buffer = start
+    while len(files) > 0:
+        if len(buffer) + len(files[0]) + len(end) + 3 < 32000:
+            buffer = buffer + ' "' + files.pop(0) + '"'
+        else:
+            buffer = buffer + end.rstrip()
+            cmds.append(buffer)
+            buffer = start
+    buffer = buffer + end.rstrip()
+    cmds.append(buffer)
+
+    return cmds
+
 def separate_cmd(cmd):
     """
     Convert a subprocess command string into a list, intelligently handling arguments
