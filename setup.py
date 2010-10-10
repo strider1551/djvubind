@@ -3,7 +3,7 @@
 from distutils.core import setup
 
 setup (name='djvubind',
-      version='0.2.1',
+      version='0.3.0',
       description='Creates djvu files with positional ocr, metadata, and bookmarks.',
       author='Adam Zajac',
       author_email='strider1551@gmail.com',

@@ -145,8 +145,17 @@ class boxfileParser():
                             boxdata[index]['char'] = char
                             index = index + 1
                     else:
-                        print('err: Djvubind.ocr.boxfileParser.resolve(): Complex replacement on "{0}" that shouldn\'t happen in real life.'.format(os.path.split(self.image)[1]), file=sys.stderr)
-                        pass
+                        # Delete the boxdata and replace with the plain text data
+                        index = boxdata.index(change['target'])
+                        deletions = boxdata[index:index+len(change['boxtext'])]
+                        for target in deletions:
+                            boxdata.remove(target)
+
+                        i = 0
+                        for char in list(change['text']):
+                            new = {'char':char, 'xmin':change['target']['xmin'], 'ymin':change['target']['ymin'], 'xmax':change['target']['xmax'], 'ymax':change['target']['ymax']}
+                            boxdata.insert(index+i, new)
+                            i = i + 1
             elif (change['action'] == 'delete'):
                 index = boxdata.index(change['target'])
                 deletions = boxdata[index:index+len(change['boxtext'])]
@@ -372,6 +381,10 @@ def ocr(image, engine='tesseract', options={'tesseract':'-l eng', 'cuneiform':'-
                 entry['ymin'] = height - ymax
                 entry['ymax'] = height - ymin
             word.add_char(entry)
+    if (word.word != ''):
+        line.add_word(word)
+    if (line.words != []):
+        page.add_line(line)
 
     if (page.lines != []):
         return page.encode()
