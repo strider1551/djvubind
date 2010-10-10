@@ -368,6 +368,8 @@ def ocr(image, engine='tesseract', options={'tesseract':'-l eng', 'cuneiform':'-
     for entry in parser.boxing:
         if entry == 'newline':
             if (line.words != []):
+                if (word.word != ''):
+                    line.add_word(word)
                 page.add_line(line)
             line = djvuLineBox()
             word = djvuWordBox()

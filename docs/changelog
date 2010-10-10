@@ -1,3 +1,8 @@
+v0.3.1
+
+* Bug Fix: Loosing the last line of ocr content (issue 18)
+
+======
 v0.3.0
 
 * Threaded page analysis for performance boost on multicore machines.
