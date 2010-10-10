@@ -28,7 +28,7 @@ if __name__ == '__main__':
     # Command line parsing
     usage = "usage: %prog [options] directory"
     description = "djvubind is designed to facilitate creating high-quality djvu files, including positional ocr, metadata, and bookmarks."
-    parser = optparse.OptionParser(usage, version='0.3.0', description=description)
+    parser = optparse.OptionParser(usage, version='0.3.1', description=description)
     parser.set_defaults(quiet=False,
                         no_ocr=False, ocr_engine='tesseract', tesseract_options='-l eng', cuneiform_options='--singlecolumn',
                         cover_front='cover_front.jpg', cover_back='cover_back.jpg',
