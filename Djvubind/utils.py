@@ -100,38 +100,39 @@ def separate_cmd(cmd):
     return out
 
 def simple_exec(cmd):
+    """
+    Execute a simple command.  Any output disregarded and exit status is
+    returned.
+    """
+
     cmd = separate_cmd(cmd)
-    with open('/dev/null', 'w') as void:
+    with open(os.devnull, 'w') as void:
         sub = subprocess.Popen(cmd, shell=False, stdout=void, stderr=void)
         return int(sub.wait())
 
 def execute(cmd, capture=False):
-    """Execute a command line process."""
-    #print('>>> {0}'.format(cmd))
-    if capture:
-        s = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-    else:
-        s = subprocess.Popen(cmd, shell=True)
+    """
+    Execute a command line process.  Includes the option of capturing output,
+    and checks for successful execution.
+    """
+
+    with open(os.devnull, 'w') as void:
+        if capture:
+            s = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=void)
+        else:
+            s = subprocess.Popen(cmd, shell=True, stdout=void, stderr=void)
     status = s.wait()
 
-
-    if (cmd.startswith('cuneiform')) and (status == 134):
-        return status
-    elif (cmd.startswith('cuneiform')) and (status == 1):
-        # Cuneiform crashes on blank images.  Still need to raise an error since it may crash
-        # for other reasons, but ocr.py by default just writes a blank file if cuneiform fails.
-        sys.exit(1)
-    elif status != 0:
+    # Exit if the command fails for any reason.
+    if status != 0:
         print('err: utils.execute(): command exited with bad status.\ncmd = {0}\nexit status = {1}'.format(cmd, status), file=sys.stderr)
         sys.exit(1)
 
     if capture:
         text = s.stdout.read()
-        del(s)
         return text
     else:
-        del(s)
-        return status
+        return None
 
 def list_files(dir='.', filter=None, extension=None):
     """Find all files in a given directory that match criteria."""
