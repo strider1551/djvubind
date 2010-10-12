@@ -22,8 +22,8 @@ import time
 import threading
 import queue
 
-import Djvubind.ocr
-import Djvubind.utils
+from . import ocr
+from . import utils
 
 def signal_handler(signal, frame):
     print('You pressed Ctrl-C!')
@@ -117,17 +117,17 @@ class Page:
         self.text = ''
 
     def get_dpi(self):
-        dpi = Djvubind.utils.execute("identify -format '%x' '{0}' | awk '{{print $1}}'".format(self.path), capture=True)
+        dpi = utils.execute("identify -format '%x' '{0}' | awk '{{print $1}}'".format(self.path), capture=True)
         self.dpi = int(dpi)
         return None
 
     def is_bitonal(self):
-        if (Djvubind.utils.execute("identify -verbose '{0}' | grep 'Base type' | awk '{{print $3}}'".format(self.path), capture=True) != b'Bilevel\n'):
+        if (utils.execute("identify -verbose '{0}' | grep 'Base type' | awk '{{print $3}}'".format(self.path), capture=True) != b'Bilevel\n'):
             self.bitonal = False
         else:
-            if (Djvubind.utils.execute('identify -format %z "{0}"'.format(self.path), capture=True) != b'1\n'):
+            if (utils.execute('identify -format %z "{0}"'.format(self.path), capture=True) != b'1\n'):
                 print("msg: {0}: Bitonal image but with a depth of 8 instead of 1.  Modifying image depth.".format(os.path.split(self.path)[1]))
-                Djvubind.utils.execute("mogrify -colors 2 '{0}'".format(self.path))
+                utils.execute("mogrify -colors 2 '{0}'".format(self.path))
             self.bitonal = True
         return None
 
@@ -136,15 +136,15 @@ class Page:
         # engines which probably don't have the same filename/filetype requirements as
         # tesseract.
         if self.path.split('.')[-1] in ['jpg', 'jpeg']:
-            Djvubind.utils.execute('convert "{0}" "{0}.tif"'.format(self.path))
-            self.text = Djvubind.ocr.ocr(self.path+'.tif', engine, ocr_options)
+            utils.execute('convert "{0}" "{0}.tif"'.format(self.path))
+            self.text = ocr.ocr(self.path+'.tif', engine, ocr_options)
             os.remove(self.path+'.tif')
         elif self.path.split('.')[-1] == 'tiff':
             shutil.copy2(self.path, self.path+'.tif')
-            self.text = Djvubind.ocr.ocr(self.path+'.tif', engine, ocr_options)
+            self.text = ocr.ocr(self.path+'.tif', engine, ocr_options)
             os.remove(self.path+'.tif')
         elif self.path.split('.')[-1] == 'tif':
-            self.text = Djvubind.ocr.ocr(self.path, engine, ocr_options)
+            self.text = ocr.ocr(self.path, engine, ocr_options)
         else:
             self.text =  ''
 

@@ -20,7 +20,7 @@ import os
 import shutil
 import sys
 
-import Djvubind.utils
+from . import utils
 
 def enc_bitonal(filenames,  encoder='minidjvu',  encoder_opts=''):
     """
@@ -39,7 +39,7 @@ def enc_bitonal(filenames,  encoder='minidjvu',  encoder_opts=''):
     if encoder == 'minidjvu':
         # Minidjvu has to worry about the length of the command since all the filenames are
         # listed.
-        cmds = Djvubind.utils.split_cmd('minidjvu {0}'.format(encoder_opts), filenames, tempfile)
+        cmds = utils.split_cmd('minidjvu {0}'.format(encoder_opts), filenames, tempfile)
     elif encoder == 'cjb2':
         cmds = []
         for filename in filenames:
@@ -51,11 +51,11 @@ def enc_bitonal(filenames,  encoder='minidjvu',  encoder_opts=''):
 
     # Execute each command, adding each result into a single, multipage djvu.
     for cmd in cmds:
-        Djvubind.utils.execute(cmd)
+        utils.execute(cmd)
         if (not os.path.isfile(outfile)):
             shutil.move(tempfile, outfile)
         else:
-            Djvubind.utils.execute('djvm -i "{0}" "{1}"'.format(outfile, tempfile))
+            utils.execute('djvm -i "{0}" "{1}"'.format(outfile, tempfile))
             os.remove(tempfile)
 
     # Check that the outfile has been created.
@@ -81,16 +81,16 @@ def enc_color(filenames, encoder='csepdjvu', encoder_opts=''):
     if encoder == 'csepdjvu':
         for filename in filenames:
             # Separate the bitonal text (scantailor's mixed mode) from everything else.
-            Djvubind.utils.execute('convert -opaque black "{0}" "temp_graphics.tif"'.format(filename))
-            Djvubind.utils.execute('convert +opaque black "{0}" "temp_textual.tif"'.format(filename))
+            utils.execute('convert -opaque black "{0}" "temp_graphics.tif"'.format(filename))
+            utils.execute('convert +opaque black "{0}" "temp_textual.tif"'.format(filename))
 
             # Encode the bitonal image.  Note that at the moment, there is no way to pass
             # custom options to cjb2.
             bitonal = enc_bitonal(["temp_textual.tif"], 'cjb2')
 
             # Encode with color with bitonal via csepdjvu
-            Djvubind.utils.execute('ddjvu -format=rle -v "{0}" "temp_textual.rle"'.format(bitonal))
-            Djvubind.utils.execute('convert temp_graphics.tif temp_graphics.ppm')
+            utils.execute('ddjvu -format=rle -v "{0}" "temp_textual.rle"'.format(bitonal))
+            utils.execute('convert temp_graphics.tif temp_graphics.ppm')
             with open('temp_merge.mix', 'wb') as mix:
                 with open('temp_textual.rle', 'rb') as rle:
                     buffer = rle.read(1024)
@@ -102,12 +102,12 @@ def enc_color(filenames, encoder='csepdjvu', encoder_opts=''):
                     while buffer:
                         mix.write(buffer)
                         buffer = ppm.read(1024)
-            Djvubind.utils.execute('csepdjvu {0} "temp_merge.mix" "temp_final.djvu"'.format(encoder_opts))
+            utils.execute('csepdjvu {0} "temp_merge.mix" "temp_final.djvu"'.format(encoder_opts))
 
             if (not os.path.isfile(outfile)):
                 shutil.move('temp_final.djvu', outfile)
             else:
-                Djvubind.utils.execute('djvm -i {0} "temp_final.djvu"'.format(outfile))
+                utils.execute('djvm -i {0} "temp_final.djvu"'.format(outfile))
 
             # Clean up
             for tempfile in glob.glob('temp_*'):
