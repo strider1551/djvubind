@@ -170,3 +170,29 @@ def is_executable(command):
             return True
 
     return False
+
+def parse_config(filename):
+    """
+    Returns a dictionary of config/value pairs from a simple config file without
+    sections or the other complexities of the builtin ConfigParser.
+    """
+
+    options = {}
+
+    with open(filename) as handle:
+        for line in handle:
+
+            # Remove comments.
+            if '#' in line:
+                line = line.split('#', 1)[0]
+
+            # Store option/value pairs.
+            if '=' in line:
+                option, value = line.split('=', 1)
+
+                option = option.strip()
+                value = value.strip()
+
+                options[option] = value
+
+    return options

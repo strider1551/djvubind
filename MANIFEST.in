@@ -1,2 +1,3 @@
 include README
 include docs/changelog
+include unittests

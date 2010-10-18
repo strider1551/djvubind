@@ -58,9 +58,10 @@ class hocrParser(HTMLParser):
             positions = {'xmin':int(attrs[0]), 'ymin':int(attrs[1]), 'xmax':int(attrs[2]), 'ymax':int(attrs[3])}
             positions['char'] = element['char']
 
-            # Disregard punction.  Note that a single quote might be an apostrophy and not a quote.
-            if element['char'] not in ['.', ',', '!', '?', ':', ';', '"']:
-                self.boxing.append(positions)
+            # Escape special characters
+            subst = {'"': '\\"', "'":"\\'", '\\': '\\\\'}
+            if char in subst.keys():
+                boxfile[0]['char'] = subst[char]
 
             # A word break is indicated by a space after the </span> tag.
             if (self.data[element['end']:element['end']+1] == ' '):
@@ -208,7 +209,7 @@ class boxfileParser():
                             msg = utils.color(msg, 'red')
                             print(msg, file=sys.stderr)
                     continue
-                if (char in ['.', ',', '!', '?', ':', ';', '"']):
+                if (char in ['"', '\\']):
                     boxfile.pop(0)
                     continue
                 self.boxing.append(boxfile.pop(0))

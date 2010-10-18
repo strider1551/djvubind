@@ -21,15 +21,23 @@ import shutil
 import sys
 import tempfile
 
-import djvubindlib.utils
-import djvubindlib.organizer
-import djvubindlib.encode
+# Check if we are working in the source tree or from an installed package and
+# adjust the python path accordingly
+loc = os.path.dirname(sys.argv[0])
+loc = os.path.join(loc+'/', '../djvubind')
+loc = os.path.abspath(loc)
+if os.path.isdir(loc):
+    sys.path.insert(0, os.path.dirname(loc))
+
+import djvubind.utils
+import djvubind.organizer
+import djvubind.encode
 
 if __name__ == '__main__':
     # Command line parsing
     usage = "usage: %prog [options] directory"
     description = "djvubind is designed to facilitate creating high-quality djvu files, including positional ocr, metadata, and bookmarks."
-    parser = optparse.OptionParser(usage, version='0.2.1', description=description)
+    parser = optparse.OptionParser(usage, version='0.3.1', description=description)
     parser.set_defaults(quiet=False,
                         no_ocr=False, ocr_engine='tesseract', tesseract_options='-l eng', cuneiform_options='--singlecolumn',
                         cover_front='cover_front.jpg', cover_back='cover_back.jpg',
@@ -54,14 +62,14 @@ if __name__ == '__main__':
     # Dependency check
     deps = ['cpaldjvu', 'djvm', 'djvused', 'identify']
     for dep in deps:
-        if (not djvubindlib.utils.is_executable(dep)):
+        if (not djvubind.utils.is_executable(dep)):
             print('err: __main__: external dependency ({0}) cannot be found.'.format(dep), file=sys.stderr)
             sys.exit(1)
     if not options.no_ocr:
-        if (not djvubindlib.utils.is_executable(options.ocr_engine)):
+        if (not djvubind.utils.is_executable(options.ocr_engine)):
             print('err: __main__: ocr engine ({0}) cannot be found.  Use --no-ocr if you do not need ocr.'.format(dep), file=sys.stderr)
             sys.exit(1)
-        if (options.ocr_engine != 'tesseract') and (not djvubindlib.utils.is_executable('tesseract')):
+        if (options.ocr_engine != 'tesseract') and (not djvubind.utils.is_executable('tesseract')):
             print('err: __main__: tesseract is the fallback ocr engine and cannot be found.  Use --no-ocr if you do not need ocr.'.format(dep), file=sys.stderr)
             sys.exit(1)
 
@@ -85,9 +93,9 @@ if __name__ == '__main__':
         outfile = 'book(' + str(i) + ').djvu'
 
     # Create list of all images going into the djvu file.
-    print('{0} Identifying and analyzing pages.'.format(djvubindlib.utils.color('*', 'green')))
-    book = djvubindlib.organizer.Book()
-    for file in djvubindlib.utils.list_files():
+    print('{0} Identifying and analyzing pages.'.format(djvubind.utils.color('*', 'green')))
+    book = djvubind.organizer.Book()
+    for file in djvubind.utils.list_files():
         ext = file.split('.')[-1]
         ext = ext.lower()
         if (ext in ['tif', 'tiff']) and (file not in [options.cover_front, options.cover_back]):
@@ -96,55 +104,55 @@ if __name__ == '__main__':
     book.analyze(options.ocr_engine, options.no_ocr, ocr_options)
 
     # Create djvu of bitonals with minidjvu
-    print('{0} Compressing bitonal pages.'.format(djvubindlib.utils.color('*', 'green')))
+    print('{0} Compressing bitonal pages.'.format(djvubind.utils.color('*', 'green')))
     bitonals = []
     for page in book.pages:
         if page.bitonal:
             filepath = os.path.split(page.path)[1]
             bitonals.append(filepath)
     if len(bitonals) > 0:
-        if djvubindlib.utils.is_executable('minidjvu'):
-            enc = djvubindlib.encode.enc_bitonal(bitonals, 'minidjvu', '--dpi {0} --pages-per-dict 100'.format(book.dpi))
+        if djvubind.utils.is_executable('minidjvu'):
+            enc = djvubind.encode.enc_bitonal(bitonals, 'minidjvu', '--dpi {0} --pages-per-dict 100'.format(book.dpi))
         else:
-            enc = djvubindlib.encode.enc_bitonal(bitonals, 'cjb2', '-dpi {0}'.format(book.dpi))
+            enc = djvubind.encode.enc_bitonal(bitonals, 'cjb2', '-dpi {0}'.format(book.dpi))
         shutil.move(enc, outfile)
 
     # Create djvu of non-bitonals and insert into djvu
-    print('{0} Compressing and inserting non-bitonal pages.'.format(djvubindlib.utils.color('*', 'green')))
+    print('{0} Compressing and inserting non-bitonal pages.'.format(djvubind.utils.color('*', 'green')))
     for page in book.pages:
         if not page.bitonal:
             page_number = book.pages.index(page)
-            enc = djvubindlib.encode.enc_color([page.path], 'csepdjvu', '-d {0}'.format(book.dpi))
-            djvubindlib.utils.simple_exec('djvm -i "{0}" "{1}" {2}'.format(outfile, enc, page_number+1))
+            enc = djvubind.encode.enc_color([page.path], 'csepdjvu', '-d {0}'.format(book.dpi))
+            djvubind.utils.simple_exec('djvm -i "{0}" "{1}" {2}'.format(outfile, enc, page_number+1))
             os.remove(enc)
 
     # Ocr
     if (not options.no_ocr):
-        print('{0} Inserting OCR data.'.format(djvubindlib.utils.color('*', 'green')))
+        print('{0} Inserting OCR data.'.format(djvubind.utils.color('*', 'green')))
         for page in book.pages:
             handle = open('ocr.txt', 'w', encoding="utf8")
             handle.write(page.text)
             handle.close()
             page_number = book.pages.index(page)+1
-            djvubindlib.utils.simple_exec('djvused -e "select {0}; remove-txt; set-txt \'ocr.txt\'; save" "{1}"'.format(page_number, outfile))
+            djvubind.utils.simple_exec('djvused -e "select {0}; remove-txt; set-txt \'ocr.txt\'; save" "{1}"'.format(page_number, outfile))
             os.remove('ocr.txt')
 
     # Insert front/back covers, metadata, and bookmarks
     if os.path.isfile(options.cover_front):
-        print('{0} Inserting front cover.'.format(djvubindlib.utils.color('*', 'green')))
-        dpi = int(djvubindlib.utils.execute("identify -format '%x' {0} | awk '{{print $1}}'".format(options.cover_front), capture=True))
-        djvubindlib.utils.simple_exec('c44 -dpi {0} "{1}" "{1}.djvu"'.format(dpi, options.cover_front))
-        djvubindlib.utils.simple_exec('djvm -i "{0}" "{1}.djvu" 1'.format(outfile, options.cover_front))
+        print('{0} Inserting front cover.'.format(djvubind.utils.color('*', 'green')))
+        dpi = int(djvubind.utils.execute("identify -format '%x' {0} | awk '{{print $1}}'".format(options.cover_front), capture=True))
+        djvubind.utils.simple_exec('c44 -dpi {0} "{1}" "{1}.djvu"'.format(dpi, options.cover_front))
+        djvubind.utils.simple_exec('djvm -i "{0}" "{1}.djvu" 1'.format(outfile, options.cover_front))
         os.remove('{0}.djvu'.format(options.cover_front))
     if os.path.isfile(options.cover_back):
-        print('{0} Inserting back cover.'.format(djvubindlib.utils.color('*', 'green')))
-        dpi = int(djvubindlib.utils.execute("identify -format '%x' {0} | awk '{{print $1}}'".format(options.cover_back), capture=True))
-        djvubindlib.utils.simple_exec('c44 -dpi {0} "{1}" "{1}.djvu"'.format(dpi, options.cover_back))
-        djvubindlib.utils.simple_exec('djvm -i "{0}" "{1}.djvu" -1'.format(outfile, options.cover_back))
+        print('{0} Inserting back cover.'.format(djvubind.utils.color('*', 'green')))
+        dpi = int(djvubind.utils.execute("identify -format '%x' {0} | awk '{{print $1}}'".format(options.cover_back), capture=True))
+        djvubind.utils.simple_exec('c44 -dpi {0} "{1}" "{1}.djvu"'.format(dpi, options.cover_back))
+        djvubind.utils.simple_exec('djvm -i "{0}" "{1}.djvu" -1'.format(outfile, options.cover_back))
         os.remove('{0}.djvu'.format(options.cover_back))
     if os.path.isfile(options.metadata):
-        print('{0} Inserting metadata.'.format(djvubindlib.utils.color('*', 'green')))
-        djvubindlib.utils.simple_exec('djvused -e "set-meta {0}; save" "{1}"'.format(options.metadata, outfile))
+        print('{0} Inserting metadata.'.format(djvubind.utils.color('*', 'green')))
+        djvubind.utils.simple_exec('djvused -e "set-meta {0}; save" "{1}"'.format(options.metadata, outfile))
     if os.path.isfile(options.bookmarks):
-        print('{0} Inserting bookmarks.'.format(djvubindlib.utils.color('*', 'green')))
-        djvubindlib.utils.simple_exec('djvused -e "set-outline {0}; save" "{1}"'.format(options.bookmarks, outfile))
+        print('{0} Inserting bookmarks.'.format(djvubind.utils.color('*', 'green')))
+        djvubind.utils.simple_exec('djvused -e "set-outline {0}; save" "{1}"'.format(options.bookmarks, outfile))
