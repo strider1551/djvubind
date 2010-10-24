@@ -86,7 +86,7 @@ class boxfileParser():
             if (line == ''):
                 continue
             line = line.split()
-            if len(line) != 5:
+            if len(line) != 5 and len(line) != 6: # Tesseract 3 box file has 6 columns
                 print('err: ocr.boxfileParser.parse_box(): The format of the boxfile is not what was expected.', file=sys.stderr)
                 sys.exit(1)
 
@@ -340,19 +340,29 @@ def ocr(image, engine='tesseract', options={'tesseract':'-l eng', 'cuneiform':'-
 
     elif (engine == 'tesseract'):
         basename = os.path.split(image)[1].split('.')[0]
-        status_a = utils.simple_exec('tesseract "{0}" "{1}_box" {2} batch makebox'.format(image, basename, options['tesseract']))
-        status_b = utils.simple_exec('tesseract "{0}" "{1}_txt" {2} batch'.format(image, basename, options['tesseract']))
+        tesseractpath = utils.get_executable_path('tesseract')
+
+        status_a = utils.simple_exec('{0} "{1}" "{2}_box" {3} batch makebox'.format(tesseractpath, image, basename, options['tesseract']))
+        status_b = utils.simple_exec('{0} "{1}" "{2}_txt" {3} batch'.format(tesseractpath, image, basename, options['tesseract']))
         if (status_a != 0) or (status_b != 0):
             msg = 'wrn: Tesseract failed on "{0}".  There will be no ocr for this page.'.format(os.path.split(image)[1])
             msg = utils.color(msg, 'red')
             print(msg, file=sys.stderr)
             return ''
 
-        with open(basename+'_box.txt', 'r', encoding='utf8') as handle:
+        # Tesseract v3 changed the .txt extension to .box so check which file
+        # was created.
+        if os.path.exists(basename + '_box.txt'):
+            boxfilename = basename + '_box.txt'
+        else:
+            boxfilename = basename + '_box.box'
+
+        with open(boxfilename, 'r', encoding='utf8') as handle:
             boxfile = handle.read()
         with open(basename+'_txt.txt', 'r', encoding='utf8') as handle:
             textfile = handle.read()
-        os.remove(basename+'_box.txt')
+
+        os.remove(boxfilename)
         os.remove(basename+'_txt.txt')
 
         parser = boxfileParser()

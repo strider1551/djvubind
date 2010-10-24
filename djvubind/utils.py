@@ -19,7 +19,14 @@ import subprocess
 import sys
 
 def color(text, color):
-    """Change the text color by adding ANSI escape sequences."""
+    """
+    Change the text color by adding ANSI escape sequences.
+    """
+
+    # Don't bother on the windows platform.
+    if sys.platform.startswith('win'):
+        return text
+
     colors = {}
     colors['pink'] = '\033[95m'
     colors['blue'] = '\033[94m'
@@ -163,13 +170,35 @@ def list_files(dir='.', filter=None, extension=None):
     return contents
 
 def is_executable(command):
-    """Checks if a given command is available.  Handy for dependency checks on external commands."""
-    for path in os.environ['PATH'].split(':'):
-        path = os.path.join(path, command)
-        if (os.access(path, os.X_OK)) and (not os.path.isdir(path)):
-            return True
+    """
+    Checks if a given command is available.  Handy for dependency checks on external commands.
+    """
 
-    return False
+    if get_executable_path(command) is not None:
+        return True
+    else:
+        return False
+
+
+def get_executable_path(command):
+    """
+    Checks if a given command is available and returns the path to the executable (if available).
+    """
+
+    # Add extension if on the windows platform.
+    if sys.platform.startswith('win'):
+        pathext = os.environ['PATHEXT']
+    else:
+        pathext = ''
+
+    for path in os.environ['PATH'].split(os.pathsep):
+        if os.path.isdir(path):
+            for ext in pathext.split(os.pathsep):
+                name = os.path.join(path, command + ext)
+                if (os.access(name, os.X_OK)) and (not os.path.isdir(name)):
+                    return name
+
+    return None
 
 def parse_config(filename):
     """
@@ -182,9 +211,12 @@ def parse_config(filename):
     with open(filename) as handle:
         for line in handle:
 
-            # Remove comments.
-            if '#' in line:
-                line = line.split('#', 1)[0]
+            line = line.strip()
+
+            # Remove comments.  Note that in-line comments are not handled and
+            # will probaly screw something up.
+            if line.startswith('#'):
+                line = ''
 
             # Store option/value pairs.
             if '=' in line:
@@ -196,3 +228,30 @@ def parse_config(filename):
                 options[option] = value
 
     return options
+
+def cpu_count():
+    """
+    Returns the number of CPU cores (both virtual an pyhsical) in the system.
+    """
+    num = 0
+
+    if sys.platform.startswith('win'):
+        try:
+            num = int(os.environ['NUMBER_OF_PROCESSORS'])
+        except (ValueError, KeyError):
+            pass
+    elif sys.platform == 'darwin':
+        try:
+            num = int(os.popen('sysctl -n hw.ncpu').read())
+        except ValueError:
+            pass
+    else:
+        try:
+            num = os.sysconf('SC_NPROCESSORS_ONLN')
+        except (ValueError, OSError, AttributeError):
+            pass
+
+    if num >= 1:
+        return num
+    else:
+        return 1

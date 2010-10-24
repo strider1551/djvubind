@@ -54,7 +54,7 @@ if __name__ == '__main__':
     (options, args) = parser.parse_args(sys.argv)
 
     if options.quiet:
-        sys.stdout = open('/dev/null', 'w')
+        sys.stdout = open(os.devnull, 'w')
     if options.ocr_engine not in ['tesseract', 'cuneiform']:
         print('err: __main__: ocr engine "{0}" is not supported.  Use "cuneiform" or "tesseract".'.format(options.ocr_engine), file=sys.stderr)
         sys.exit(1)
@@ -67,10 +67,10 @@ if __name__ == '__main__':
             sys.exit(1)
     if not options.no_ocr:
         if (not djvubind.utils.is_executable(options.ocr_engine)):
-            print('err: __main__: ocr engine ({0}) cannot be found.  Use --no-ocr if you do not need ocr.'.format(dep), file=sys.stderr)
+            print('err: __main__: ocr engine ({0}) cannot be found.  Use --no-ocr if you do not need ocr.'.format(options.ocr_engine), file=sys.stderr)
             sys.exit(1)
         if (options.ocr_engine != 'tesseract') and (not djvubind.utils.is_executable('tesseract')):
-            print('err: __main__: tesseract is the fallback ocr engine and cannot be found.  Use --no-ocr if you do not need ocr.'.format(dep), file=sys.stderr)
+            print('err: __main__: tesseract is the fallback ocr engine and cannot be found.  Use --no-ocr if you do not need ocr.'.format(options.ocr_engine), file=sys.stderr)
             sys.exit(1)
 
     # Change working directory if necessary
@@ -140,13 +140,13 @@ if __name__ == '__main__':
     # Insert front/back covers, metadata, and bookmarks
     if os.path.isfile(options.cover_front):
         print('{0} Inserting front cover.'.format(djvubind.utils.color('*', 'green')))
-        dpi = int(djvubind.utils.execute("identify -format '%x' {0} | awk '{{print $1}}'".format(options.cover_front), capture=True))
+        dpi = int(djvubind.utils.execute('identify -ping -format %x "{0}"'.format(options.cover_front), capture=True).decode('ascii').split(' ')[0])
         djvubind.utils.simple_exec('c44 -dpi {0} "{1}" "{1}.djvu"'.format(dpi, options.cover_front))
         djvubind.utils.simple_exec('djvm -i "{0}" "{1}.djvu" 1'.format(outfile, options.cover_front))
         os.remove('{0}.djvu'.format(options.cover_front))
     if os.path.isfile(options.cover_back):
         print('{0} Inserting back cover.'.format(djvubind.utils.color('*', 'green')))
-        dpi = int(djvubind.utils.execute("identify -format '%x' {0} | awk '{{print $1}}'".format(options.cover_back), capture=True))
+        dpi = int(djvubind.utils.execute('identify -ping -format %x "{0}"'.format(options.cover_back), capture=True).decode('ascii').split(' ')[0])
         djvubind.utils.simple_exec('c44 -dpi {0} "{1}" "{1}.djvu"'.format(dpi, options.cover_back))
         djvubind.utils.simple_exec('djvm -i "{0}" "{1}.djvu" -1'.format(outfile, options.cover_back))
         os.remove('{0}.djvu'.format(options.cover_back))

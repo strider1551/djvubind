@@ -30,7 +30,10 @@ class FunctColor(unittest.TestCase):
                   'red': '\033[91mred\033[0m'}
         for color in colors.keys():
             out = djvubind.utils.color(color, color)
-            self.assertEqual(colors[color], out)
+            if sys.platform.startswith('win'):
+                self.assertEqual(color, out)
+            else:
+                self.assertEqual(colors[color], out)
 
     def test_02BadColor(self):
         """

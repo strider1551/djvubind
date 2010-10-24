@@ -63,6 +63,10 @@ class QueueRunner(threading.Thread):
 class Book:
     def __init__(self):
         self.pages = []
+        self.suppliments = {'cover_front':None,
+                            'cover_back':None,
+                            'metadata':None,
+                            'bookmarks':None}
         self.dpi = None
 
     def insert_page(self, path):
@@ -76,7 +80,7 @@ class Book:
             q.put(i)
 
         # Detect number of available cpus
-        ncpus = os.sysconf("SC_NPROCESSORS_ONLN")
+        ncpus = utils.cpu_count()
         if not isinstance(ncpus, int) or ncpus <= 0:
             ncpus = 1
         print('  Spawning {0} processing threads.'.format(ncpus))
@@ -117,17 +121,17 @@ class Page:
         self.text = ''
 
     def get_dpi(self):
-        dpi = utils.execute("identify -format '%x' '{0}' | awk '{{print $1}}'".format(self.path), capture=True)
+        dpi = utils.execute('identify -ping -format %x "{0}"'.format(self.path), capture=True).decode('ascii').split(' ')[0]
         self.dpi = int(dpi)
         return None
 
     def is_bitonal(self):
-        if (utils.execute("identify -verbose '{0}' | grep 'Base type' | awk '{{print $3}}'".format(self.path), capture=True) != b'Bilevel\n'):
+        if utils.execute('identify -ping "{0}"'.format(self.path), capture=True).decode('ascii').find('Bilevel') == -1:
             self.bitonal = False
         else:
-            if (utils.execute('identify -format %z "{0}"'.format(self.path), capture=True) != b'1\n'):
-                print("msg: {0}: Bitonal image but with a depth of 8 instead of 1.  Modifying image depth.".format(os.path.split(self.path)[1]))
-                utils.execute("mogrify -colors 2 '{0}'".format(self.path))
+            if (utils.execute('identify -ping -format %z "{0}"'.format(self.path), capture=True).decode('ascii') != ('1' + os.linesep)):
+                print("msg: {0}: Bitonal image but with a depth greater than 1.  Modifying image depth.".format(os.path.split(self.path)[1]))
+                utils.execute('mogrify -colors 2 "{0}"'.format(self.path))
             self.bitonal = True
         return None
 
