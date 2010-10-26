@@ -69,6 +69,20 @@ class Book:
                             'bookmarks':None}
         self.dpi = None
 
+    def get_dpi(self):
+        """
+        Sets the book's dpi based on the dpi of the individual pages.  Pretty much
+        only used by minidjvu.
+        """
+
+        for page in self.pages:
+            if (self.dpi is not None) and (page.dpi != self.dpi):
+                print("wrn: {0}".format(page.path))
+                print("wrn: organizer.Book.analyze(): page dpi is different from the previous page.  If you encounter problems with minidjvu, this is probably why.", file=sys.stderr)
+            self.dpi = page.dpi
+
+        return None
+
     def insert_page(self, path):
         self.pages.append(Page(path))
         return None

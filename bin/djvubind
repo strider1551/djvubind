@@ -14,145 +14,315 @@
 #       along with this program; if not, write to the Free Software
 #       Foundation, Inc.
 
-import glob
 import optparse
 import os
+import queue
 import shutil
 import sys
-import tempfile
+import threading
+import time
 
-# Check if we are working in the source tree or from an installed package and
-# adjust the python path accordingly
+# Check if we are working in the source tree or from an installed package
+# When in the source tree, adjust the python path accordingly for importation of
+# djvubind modules from source.
 loc = os.path.dirname(sys.argv[0])
 loc = os.path.join(loc+'/', '../djvubind')
 loc = os.path.abspath(loc)
 if os.path.isdir(loc):
     sys.path.insert(0, os.path.dirname(loc))
 
-import djvubind.utils
-import djvubind.organizer
 import djvubind.encode
+import djvubind.ocr
+import djvubind.organizer
+import djvubind.utils
+
+
+class ThreadAnalyze(threading.Thread):
+    def __init__(self, q):
+        threading.Thread.__init__(self)
+        self.queue = q
+
+        self.quit = False
+
+    def run(self):
+        while not self.quit:
+            try:
+                # Process the page
+                page = self.queue.get()
+                page.is_bitonal()
+                page.get_dpi()
+            except queue.Empty:
+                self.quit = True
+            finally:
+                self.queue.task_done()
+
+class ThreadOCR(threading.Thread):
+    def __init__(self, q, ocr):
+        threading.Thread.__init__(self)
+        self.queue = q
+        self.ocr = ocr
+
+        self.quit = False
+
+    def run(self):
+        while not self.quit:
+            try:
+                # Process the page
+                page = self.queue.get()
+                boxing = self.ocr.analyze_image(page.path)
+                page.text = self.ocr.translate(boxing)
+            except queue.Empty:
+                self.quit = True
+            finally:
+                self.queue.task_done()
+
+
+class Project:
+    """
+    Abstraction of the entire project.  This should make things like status
+    reports, clean exits on errors, and access to information a little easier.
+    """
+
+    def __init__(self, opts):
+        self.get_config(opts)
+
+        self.out = 'book.djvu'
+
+        self.book = djvubind.organizer.Book()
+        self.enc = djvubind.encode.Encoder(self.opts)
+        self.ocr = djvubind.ocr.OCR(self.opts)
+
+    def add_file(self, filename, type='page'):
+        """
+        Adds a file to the project.
+        type can be 'page', 'cover_front', 'cover_back', 'metadata', or 'bookmarks'.
+        """
+
+        # Check that type is valid and file exists.
+        if type not in ['page', 'cover_front', 'cover_back', 'metadata', 'bookmarks']:
+            msg = 'err: Project.add_file(): type "{0}" is unknown.'.format(type)
+            print(msg, file=sys.stderr)
+            sys.exit(1)
+        if not os.path.isfile(filename):
+            msg = 'err: Project.add_file(): "{0}" does not exist or is not a file.'.format(filename)
+            print(msg, file=sys.stderr)
+            sys.exit(1)
+
+        # Hand the files over to self.book to manage.
+        if type == 'page':
+            self.book.insert_page(filename)
+        else:
+            self.book.suppliments[type] = filename
+
+        return None
+
+    def analyze(self):
+        """
+        Retrieve and store information about each image (dpi, bitonal, etc.).
+        """
+
+        # Create queu and populate with pages to process
+        q = queue.Queue()
+        for i in self.book.pages:
+            q.put(i)
+
+        # Create threads to process the pages in queue
+        print('  Spawning {0} processing threads.'.format(self.opts['cores']))
+        for i in range(self.opts['cores']):
+            p = ThreadAnalyze(q)
+            p.daemon = True
+            p.start()
+
+        # Wait for everything to digest.  Note that we don't simply call q.join()
+        # because it blocks, preventing something like ctrl-c from killing the program.
+        pagecount = len(self.book.pages)
+        while not q.empty():
+            try:
+                time.sleep(3)
+                # Report completion percentage.
+                # N.b., this is perfect, since queue.qsize() isn't completely reliable in a threaded
+                # environment, but it will do well enough to give the user and idea of where we are.
+                position = ( (pagecount - q.qsize() - self.opts['cores']) / pagecount ) * 100
+                print('  {0:.2f}% completed.       '.format(position), end='\r')
+            except KeyboardInterrupt:
+                print('')
+                sys.exit(1)
+        q.join()
+
+        return None
+
+    def bind(self):
+        """
+        Fully encodes all images into a single djvu file.  This includes adding
+        known ocr information, covers, metadata, etc.
+        """
+
+        self.enc.enc_book(self.book, self.out)
+
+        return None
+
+    def get_config(self, opts):
+        """
+        Retrives configuration options set in the user's config file.  Options
+        passed through the command line (already in 'opts') should be
+        translated and overwrite config file options.
+        """
+
+        # Set default options
+        self.opts = {'cores':-1,
+                     'ocr':True,
+                     'ocr_engine':'tesseract',
+                     'cuneiform_options':'',
+                     'tesseract_options':'',
+                     'bitonal_encoder':'cjb2',
+                     'color_encoder':'csepdjvu',
+                     'c44_options':'',
+                     'cjb2_options':'',
+                     'csepdjvu_options':'',
+                     'minidjvu_options':''}
+
+        # Load the options from the user's config file, if it exists.
+        filename = os.path.expanduser('~/.config/djvubind/config')
+        if os.path.isfile(filename):
+            config_opts = djvubind.utils.parse_config(filename)
+            self.opts.update(config_opts)
+        else:
+            msg = 'msg: Project.get_config(): No user config file found ({0}).'.format(filename)
+            print(msg, file=sys.stderr)
+
+        # Overwrite or create values for certain command line options
+        if opts.no_ocr:
+            self.opts['ocr'] = False
+        if opts.tesseract_options is not None:
+            self.opts['tesseract_options'] = opts.tesseract_options
+        if opts.cuneiform_options is not None:
+            self.opts['cuneiform_options'] = opts.cuneiform_options
+        self.opts['verbose'] = opts.verbose
+        self.opts['quiet'] = opts.quiet
+
+        # Detect number of cores if not manually set already
+        if self.opts['cores'] == -1:
+            self.opts['cores'] = djvubind.utils.cpu_count()
+
+        if self.opts['verbose']:
+            print('Executing with these parameters:')
+            print(self.opts)
+
+        return None
+
+    def get_ocr(self):
+        """
+        Performs optical character analysis on all images, excluding covers.
+        """
+
+        # Create queu and populate with pages to process
+        q = queue.Queue()
+        for i in self.book.pages:
+            q.put(i)
+
+        # Create threads to process the pages in queue
+        print('  Spawning {0} processing threads.'.format(self.opts['cores']))
+        for i in range(self.opts['cores']):
+            p = ThreadOCR(q, self.ocr)
+            p.daemon = True
+            p.start()
+
+        # Wait for everything to digest.  Note that we don't simply call q.join()
+        # because it blocks, preventing something like ctrl-c from killing the
+        # program.
+        pagecount = len(self.book.pages)
+        while not q.empty():
+            try:
+                time.sleep(3)
+                # Report completion percentage.
+                # N.b., this is perfect, since queue.qsize() isn't completely reliable in a threaded
+                # environment, but it will do well enough to give the user and idea of where we are.
+                position = ( (pagecount - q.qsize() - self.opts['cores']) / pagecount ) * 100
+                print('  {0:.2f}% completed.       '.format(position), end='\r')
+            except KeyboardInterrupt:
+                print('')
+                sys.exit(1)
+        q.join()
+
+        return None
+
 
 if __name__ == '__main__':
     # Command line parsing
     usage = "usage: %prog [options] directory"
     description = "djvubind is designed to facilitate creating high-quality djvu files, including positional ocr, metadata, and bookmarks."
-    parser = optparse.OptionParser(usage, version='0.3.1', description=description)
-    parser.set_defaults(quiet=False,
-                        no_ocr=False, ocr_engine='tesseract', tesseract_options='-l eng', cuneiform_options='--singlecolumn',
+    parser = optparse.OptionParser(usage, version='0.4.0', description=description)
+    parser.set_defaults(quiet=False, verbose=False,
+                        no_ocr=False, ocr_engine='tesseract', tesseract_options=None, cuneiform_options=None,
                         cover_front='cover_front.jpg', cover_back='cover_back.jpg',
                         metadata='metadata', bookmarks='bookmarks')
     parser.add_option("--cover-front", dest="cover_front", help="Specifies an alternate front cover image.  By default, '%default' is used if present.")
     parser.add_option("--cover-back", dest="cover_back", help="Specifies an alternate back cover image.  By default, '%default' is used if present.")
     parser.add_option("--ocr-engine", dest="ocr_engine", help="Select which ocr engine to use (cuneiform|tesseract).  By default, '%default' is used.")
-    parser.add_option("--tesseract-options", dest="tesseract_options", help="Additional command line options to pass to tesseract.  The default is '%default'.")
-    parser.add_option("--cuneiform-options", dest="cuneiform_options", help="Additional command line options to pass to cuneiform.  The default is '%default'.")
+    parser.add_option("--tesseract-options", dest="tesseract_options", help="Additional command line options to pass to tesseract.")
+    parser.add_option("--cuneiform-options", dest="cuneiform_options", help="Additional command line options to pass to cuneiform.")
     parser.add_option("--metadata", dest="metadata", help="Specifies an alternate metadata file.  By default, '%default' is used if present.")
     parser.add_option("--bookmarks", dest="bookmarks", help="Specifies an alternate bookmarks file.  By default, '%default' is used if present.")
     parser.add_option("--no-ocr", action="store_true", dest="no_ocr", help="Images will not be processed for text content.")
     parser.add_option("-q", "--quiet", action="store_true", dest="quiet")
+    parser.add_option("-v", "--verbose", action="store_true", dest="verbose")
     (options, args) = parser.parse_args(sys.argv)
 
     if options.quiet:
         sys.stdout = open(os.devnull, 'w')
+
+    # Sanity checks on command line arguments and options
+    if len(args) == 2:
+        if not os.path.isdir(args[1]):
+            print('The argument ({0}) is not a directory.'.format(args[1]), file=sys.stderr)
+            sys.exit(1)
+    elif (len(args) > 2):
+        print('Too many arguments, check your command syntax.', file=sys.stderr)
+        sys.exit(1)
     if options.ocr_engine not in ['tesseract', 'cuneiform']:
         print('err: __main__: ocr engine "{0}" is not supported.  Use "cuneiform" or "tesseract".'.format(options.ocr_engine), file=sys.stderr)
         sys.exit(1)
 
     # Dependency check
-    deps = ['cpaldjvu', 'djvm', 'djvused', 'identify']
+    # N.B. checks for ocr engines *should* take place in ocr.OCR(), since which
+    # ones are needed requires knowledge of config preferences, bitonal/nonbitonal, etc.
+    # Likewise for encoders other than djvulibre tools (albeit in encode.Encode())
+    deps = ['cpaldjvu', 'cjb2', 'djvm', 'djvused', 'identify']
     for dep in deps:
         if (not djvubind.utils.is_executable(dep)):
             print('err: __main__: external dependency ({0}) cannot be found.'.format(dep), file=sys.stderr)
             sys.exit(1)
-    if not options.no_ocr:
-        if (not djvubind.utils.is_executable(options.ocr_engine)):
-            print('err: __main__: ocr engine ({0}) cannot be found.  Use --no-ocr if you do not need ocr.'.format(options.ocr_engine), file=sys.stderr)
-            sys.exit(1)
-        if (options.ocr_engine != 'tesseract') and (not djvubind.utils.is_executable('tesseract')):
-            print('err: __main__: tesseract is the fallback ocr engine and cannot be found.  Use --no-ocr if you do not need ocr.'.format(options.ocr_engine), file=sys.stderr)
-            sys.exit(1)
 
-    # Change working directory if necessary
-    if (len(args) > 2):
-        print('Too many arguments, check your syntax.', file=sys.stderr)
-        sys.exit(1)
-    if (len(args) == 2):
-        if (not os.path.isdir(args[1])):
-            print('The argument ({0}) is not a directory.'.format(args[1]), file=sys.stderr)
-            sys.exit(1)
-        else:
-            directory = os.path.normpath(os.path.join(os.path.curdir, args[1]))
-            os.chdir(directory)
+    proj = Project(options)
 
     # Increment the file name if a previous book.djvu already exists.
     i = 0
-    outfile = 'book.djvu'
-    while os.path.isfile(outfile):
+    while os.path.isfile(proj.out):
         i = i + 1
-        outfile = 'book(' + str(i) + ').djvu'
+        proj.out = 'book(' + str(i) + ').djvu'
 
-    # Create list of all images going into the djvu file.
-    print('{0} Identifying and analyzing pages.'.format(djvubind.utils.color('*', 'green')))
-    book = djvubind.organizer.Book()
-    for file in djvubind.utils.list_files():
-        ext = file.split('.')[-1]
-        ext = ext.lower()
-        if (ext in ['tif', 'tiff']) and (file not in [options.cover_front, options.cover_back]):
-            book.insert_page(file)
-    ocr_options = {'tesseract':options.tesseract_options, 'cuneiform':options.cuneiform_options}
-    book.analyze(options.ocr_engine, options.no_ocr, ocr_options)
-
-    # Create djvu of bitonals with minidjvu
-    print('{0} Compressing bitonal pages.'.format(djvubind.utils.color('*', 'green')))
-    bitonals = []
-    for page in book.pages:
-        if page.bitonal:
-            filepath = os.path.split(page.path)[1]
-            bitonals.append(filepath)
-    if len(bitonals) > 0:
-        if djvubind.utils.is_executable('minidjvu'):
-            enc = djvubind.encode.enc_bitonal(bitonals, 'minidjvu', '--dpi {0} --pages-per-dict 100'.format(book.dpi))
-        else:
-            enc = djvubind.encode.enc_bitonal(bitonals, 'cjb2', '-dpi {0}'.format(book.dpi))
-        shutil.move(enc, outfile)
-
-    # Create djvu of non-bitonals and insert into djvu
-    print('{0} Compressing and inserting non-bitonal pages.'.format(djvubind.utils.color('*', 'green')))
-    for page in book.pages:
-        if not page.bitonal:
-            page_number = book.pages.index(page)
-            enc = djvubind.encode.enc_color([page.path], 'csepdjvu', '-d {0}'.format(book.dpi))
-            djvubind.utils.simple_exec('djvm -i "{0}" "{1}" {2}'.format(outfile, enc, page_number+1))
-            os.remove(enc)
-
-    # Ocr
-    if (not options.no_ocr):
-        print('{0} Inserting OCR data.'.format(djvubind.utils.color('*', 'green')))
-        for page in book.pages:
-            handle = open('ocr.txt', 'w', encoding="utf8")
-            handle.write(page.text)
-            handle.close()
-            page_number = book.pages.index(page)+1
-            djvubind.utils.simple_exec('djvused -e "select {0}; remove-txt; set-txt \'ocr.txt\'; save" "{1}"'.format(page_number, outfile))
-            os.remove('ocr.txt')
-
-    # Insert front/back covers, metadata, and bookmarks
+    # Add files to the project
+    print('{0} Collecting files to be processed.'.format(djvubind.utils.color('*', 'green')))
     if os.path.isfile(options.cover_front):
-        print('{0} Inserting front cover.'.format(djvubind.utils.color('*', 'green')))
-        dpi = int(djvubind.utils.execute('identify -ping -format %x "{0}"'.format(options.cover_front), capture=True).decode('ascii').split(' ')[0])
-        djvubind.utils.simple_exec('c44 -dpi {0} "{1}" "{1}.djvu"'.format(dpi, options.cover_front))
-        djvubind.utils.simple_exec('djvm -i "{0}" "{1}.djvu" 1'.format(outfile, options.cover_front))
-        os.remove('{0}.djvu'.format(options.cover_front))
+        proj.add_file(options.cover_front, 'cover_front')
     if os.path.isfile(options.cover_back):
-        print('{0} Inserting back cover.'.format(djvubind.utils.color('*', 'green')))
-        dpi = int(djvubind.utils.execute('identify -ping -format %x "{0}"'.format(options.cover_back), capture=True).decode('ascii').split(' ')[0])
-        djvubind.utils.simple_exec('c44 -dpi {0} "{1}" "{1}.djvu"'.format(dpi, options.cover_back))
-        djvubind.utils.simple_exec('djvm -i "{0}" "{1}.djvu" -1'.format(outfile, options.cover_back))
-        os.remove('{0}.djvu'.format(options.cover_back))
+        proj.add_file(options.cover_back, 'cover_back')
     if os.path.isfile(options.metadata):
-        print('{0} Inserting metadata.'.format(djvubind.utils.color('*', 'green')))
-        djvubind.utils.simple_exec('djvused -e "set-meta {0}; save" "{1}"'.format(options.metadata, outfile))
+        proj.add_file(options.metadata, 'metadata')
     if os.path.isfile(options.bookmarks):
-        print('{0} Inserting bookmarks.'.format(djvubind.utils.color('*', 'green')))
-        djvubind.utils.simple_exec('djvused -e "set-outline {0}; save" "{1}"'.format(options.bookmarks, outfile))
+        proj.add_file(options.bookmarks, 'bookmarks')
+    for filename in djvubind.utils.list_files():
+        ext = filename.split('.')[-1]
+        ext = ext.lower()
+        if (ext in ['tif', 'tiff']) and (filename not in [options.cover_front, options.cover_back]):
+            proj.add_file(filename, 'page')
+
+    print('{0} Analyzing image information.'.format(djvubind.utils.color('*', 'green')))
+    proj.analyze()
+    proj.book.get_dpi()
+
+    print('{0} Performing optical character recognition.'.format(djvubind.utils.color('*', 'green')))
+    proj.get_ocr()
+
+    print('{0} Encoding all information to {1}.'.format(djvubind.utils.color('*', 'green'), proj.out))
+    proj.bind()
