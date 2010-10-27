@@ -1,3 +1,14 @@
+v0.4.0
+
+* Bug Fix: better ocr parsing (issue 18)
+* Bug Fix: un-needed ocr character filtering (issue 20)
+* Support for configuration file (issue 16)
+* Support for tesseract-3.00
+* Performance enhancements
+* Mac support (issue 8)
+* WIndows support (issue 9)
+
+======
 v0.3.1
 
 * Bug Fix: Loosing the last line of ocr content (issue 18)

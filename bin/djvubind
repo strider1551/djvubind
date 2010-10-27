@@ -177,15 +177,19 @@ class Project:
                      'bitonal_encoder':'cjb2',
                      'color_encoder':'csepdjvu',
                      'c44_options':'',
-                     'cjb2_options':'',
+                     'cjb2_options':'-lossy',
                      'csepdjvu_options':'',
-                     'minidjvu_options':''}
+                     'minidjvu_options':'--match --pages-per-dict=100'}
 
         # Load the options from the user's config file, if it exists.
         filename = os.path.expanduser('~/.config/djvubind/config')
         if os.path.isfile(filename):
             config_opts = djvubind.utils.parse_config(filename)
             self.opts.update(config_opts)
+
+            # Set cetain variables to the proper type
+            self.opts['cores'] = int(self.opts['cores'])
+            self.opts['ocr'] = (self.opts['ocr'] == 'True')
         else:
             msg = 'msg: Project.get_config(): No user config file found ({0}).'.format(filename)
             print(msg, file=sys.stderr)
@@ -193,6 +197,8 @@ class Project:
         # Overwrite or create values for certain command line options
         if opts.no_ocr:
             self.opts['ocr'] = False
+        if opts.ocr_engine is not None:
+            self.opts['ocr_engine'] = opts.ocr_engine
         if opts.tesseract_options is not None:
             self.opts['tesseract_options'] = opts.tesseract_options
         if opts.cuneiform_options is not None:
@@ -253,7 +259,7 @@ if __name__ == '__main__':
     description = "djvubind is designed to facilitate creating high-quality djvu files, including positional ocr, metadata, and bookmarks."
     parser = optparse.OptionParser(usage, version='0.4.0', description=description)
     parser.set_defaults(quiet=False, verbose=False,
-                        no_ocr=False, ocr_engine='tesseract', tesseract_options=None, cuneiform_options=None,
+                        no_ocr=False, ocr_engine=None, tesseract_options=None, cuneiform_options=None,
                         cover_front='cover_front.jpg', cover_back='cover_back.jpg',
                         metadata='metadata', bookmarks='bookmarks')
     parser.add_option("--cover-front", dest="cover_front", help="Specifies an alternate front cover image.  By default, '%default' is used if present.")

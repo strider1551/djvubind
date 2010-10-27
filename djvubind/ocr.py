@@ -60,8 +60,9 @@ class hocrParser(HTMLParser):
 
             # Escape special characters
             subst = {'"': '\\"', "'":"\\'", '\\': '\\\\'}
-            if char in subst.keys():
-                boxfile[0]['char'] = subst[char]
+            if positions['char'] in subst.keys():
+                positions['char'] = subst[positions['char']]
+            self.boxing.append(positions)
 
             # A word break is indicated by a space after the </span> tag.
             if (self.data[element['end']:element['end']+1] == ' '):
@@ -453,9 +454,10 @@ class OCR:
         # image is needed to invert the values.
         height = int(utils.execute('identify -format %H "{0}"'.format(filename), capture=True))
         for entry in parser.boxing:
-            ymin, ymax = entry['ymin'], entry['ymax']
-            entry['ymin'] = height - ymax
-            entry['ymax'] = height - ymin
+            if entry not in ['space', 'newline']:
+                ymin, ymax = entry['ymin'], entry['ymax']
+                entry['ymin'] = height - ymax
+                entry['ymax'] = height - ymin
 
         return parser.boxing
 
@@ -552,10 +554,6 @@ class OCR:
                     line.add_word(word)
                 word = djvuWordBox()
             else:
-                if (self.opts['ocr_engine'] == 'cuneiform'):
-                    ymin, ymax = entry['ymin'], entry['ymax']
-                    entry['ymin'] = height - ymax
-                    entry['ymax'] = height - ymin
                 word.add_char(entry)
         if (word.word != ''):
             line.add_word(word)

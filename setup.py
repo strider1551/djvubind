@@ -10,6 +10,7 @@ setup (name='djvubind',
       url='https://code.google.com/p/djvubind/',
       license='GPL-3',
       py_modules=['djvubind/__init__', 'djvubind/ocr', 'djvubind/organizer', 'djvubind/utils'],
-      data_files=[('share/man/man1', ['docs/djvubind.1.gz']),
-                  ('bin', ['bin/djvubind'])]
+      data_files=[('bin', ['bin/djvubind']),
+                  ('etc/djvubind', ['docs/config']),
+                  ('share/man/man1', ['docs/djvubind.1.gz'])]
 )
