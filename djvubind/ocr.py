@@ -301,110 +301,6 @@ class djvuPageBox:
         return page+'\n  '+lines+')'
 
 
-def ocr(image, engine='tesseract', options={'tesseract':'-l eng', 'cuneiform':'--singlecolumn'}):
-    if (engine == 'cuneiform'):
-        status = utils.simple_exec('cuneiform -f hocr -o "{0}.hocr" {1} "{0}"'.format(image, options['cuneiform']))
-        if status != 0:
-            if status == -6:
-                # Cuneiform seems to have a buffer flow on every other image, and even more without the --singlecolumn option.
-                msg = '\nwrn: cuneiform encountered a buffer overflow on "{0}".  Ocr on this image will be done with tesseract.'.format(os.path.split(image)[1])
-                msg = utils.color(msg, 'red')
-                print(msg, file=sys.stderr)
-            else:
-                # Cuneiform crashes on blank images (exit status 1, message about failing to detect something).
-                # They do not consider this behavior a bug. See https://bugs.launchpad.net/cuneiform-linux/+bug/445357
-                # Also, it seems that <=cuneiform-0.7.0 can only process bmp images.
-                msg = 'wrn: cuneiform crashed on "{0}".  Ocr on this image will be done with tesseract.'.format(os.path.split(image)[1])
-                msg = utils.color(msg, 'red')
-                print(msg, file=sys.stderr)
-            return ocr(image, engine='tesseract')
-
-        with open('{0}.hocr'.format(image), 'r', encoding='utf8') as handle:
-            text = handle.read()
-
-        # Sometimes filenames have multiple periods, especially when using tesseract
-        # and 'image.tiff' was copied to 'image.tiff.tif'
-        basename = os.path.split(image)[1]
-        basename = basename.split('.')[:-1]
-        basename = '.'.join(basename)
-        if os.path.isdir(basename+'_files'):
-            shutil.rmtree(basename+'_files')
-        os.remove(image+'.hocr')
-
-        parser = hocrParser()
-        parser.parse(text)
-
-        # Cuneiform hocr inverts the y-axis compared to what djvu expects.  The total height of the
-        # image is needed to invert the values.  Better to get it now once rather than in the loop
-        # where it is used.
-        height = int(utils.execute('identify -format %H "{0}"'.format(image), capture=True))
-
-    elif (engine == 'tesseract'):
-        basename = os.path.split(image)[1].split('.')[0]
-        tesseractpath = utils.get_executable_path('tesseract')
-
-        status_a = utils.simple_exec('{0} "{1}" "{2}_box" {3} batch makebox'.format(tesseractpath, image, basename, options['tesseract']))
-        status_b = utils.simple_exec('{0} "{1}" "{2}_txt" {3} batch'.format(tesseractpath, image, basename, options['tesseract']))
-        if (status_a != 0) or (status_b != 0):
-            msg = 'wrn: Tesseract failed on "{0}".  There will be no ocr for this page.'.format(os.path.split(image)[1])
-            msg = utils.color(msg, 'red')
-            print(msg, file=sys.stderr)
-            return ''
-
-        # Tesseract v3 changed the .txt extension to .box so check which file
-        # was created.
-        if os.path.exists(basename + '_box.txt'):
-            boxfilename = basename + '_box.txt'
-        else:
-            boxfilename = basename + '_box.box'
-
-        with open(boxfilename, 'r', encoding='utf8') as handle:
-            boxfile = handle.read()
-        with open(basename+'_txt.txt', 'r', encoding='utf8') as handle:
-            textfile = handle.read()
-
-        os.remove(boxfilename)
-        os.remove(basename+'_txt.txt')
-
-        parser = boxfileParser()
-        parser.image = image
-        parser.parse(boxfile, textfile)
-
-    else:
-        print('err: ocr.ocr(): Specified ocr engine is not supported.', file=sys.stderr)
-        sys.exit(1)
-
-    page = djvuPageBox()
-    line = djvuLineBox()
-    word = djvuWordBox()
-    for entry in parser.boxing:
-        if entry == 'newline':
-            if (line.words != []):
-                if (word.word != ''):
-                    line.add_word(word)
-                page.add_line(line)
-            line = djvuLineBox()
-            word = djvuWordBox()
-        elif entry == 'space':
-            if (word.word != ''):
-                line.add_word(word)
-            word = djvuWordBox()
-        else:
-            if (engine == 'cuneiform'):
-                ymin, ymax = entry['ymin'], entry['ymax']
-                entry['ymin'] = height - ymax
-                entry['ymax'] = height - ymin
-            word.add_char(entry)
-    if (word.word != ''):
-        line.add_word(word)
-    if (line.words != []):
-        page.add_line(line)
-
-    if (page.lines != []):
-        return page.encode()
-    else:
-        return ''
-
 class OCR:
     """
     An intelligent ocr process that can work with numerous ocr engines.
@@ -472,7 +368,7 @@ class OCR:
         status_a = utils.simple_exec('{0} "{1}" "{2}_box" {3} batch makebox'.format(tesseractpath, filename, basename, self.opts['tesseract_options']))
         status_b = utils.simple_exec('{0} "{1}" "{2}_txt" {3} batch'.format(tesseractpath, filename, basename, self.opts['tesseract_options']))
         if (status_a != 0) or (status_b != 0):
-            msg = 'wrn: Tesseract failed on "{0}".  There will be no ocr for this page.'.format(os.path.split(image)[1])
+            msg = 'wrn: Tesseract failed on "{0}".  There will be no ocr for this page.'.format(os.path.split(filename)[1])
             msg = utils.color(msg, 'red')
             print(msg, file=sys.stderr)
             return []
@@ -523,7 +419,8 @@ class OCR:
         engine = self.opts['ocr_engine']
 
         if not utils.is_executable(engine):
-            msg = 'wrn: ocr engine "{0}" is not installed.\n Tesseract will be used instead.'.format(engine)
+            msg = 'wrn: ocr engine "{0}" is not installed. Tesseract will be used instead.'.format(engine)
+            msg = utils.color(msg, 'red')
             print(msg, file=sys.stderr)
             self.opts['ocr_engine'] = 'tesseract'
         if (engine != 'tesseract') and (not utils.is_executable('tesseract')):

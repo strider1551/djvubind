@@ -135,7 +135,7 @@ class Encoder:
         """
 
         if not utils.is_executable(self.opts['bitonal_encoder']):
-            msg = 'err: encoder "{0}" is not installed.'.format(engine)
+            msg = 'err: encoder "{0}" is not installed.'.format(self.opts['bitonal_encoder'])
             print(msg, file=sys.stderr)
             sys.exit(1)
         if not utils.is_executable(self.opts['color_encoder']):

@@ -25,9 +25,10 @@ import time
 # Check if we are working in the source tree or from an installed package
 # When in the source tree, adjust the python path accordingly for importation of
 # djvubind modules from source.
-loc = os.path.dirname(sys.argv[0])
+loc = os.path.realpath(__file__)
+loc = os.path.dirname(loc)
 loc = os.path.join(loc+'/', '../djvubind')
-loc = os.path.abspath(loc)
+loc = os.path.normpath(loc)
 if os.path.isdir(loc):
     sys.path.insert(0, os.path.dirname(loc))
 
@@ -179,10 +180,22 @@ class Project:
                      'c44_options':'',
                      'cjb2_options':'-lossy',
                      'csepdjvu_options':'',
-                     'minidjvu_options':'--match --pages-per-dict=100'}
+                     'minidjvu_options':'--match -pages-per-dict 100',
+                     'win_path':'C:\\Program Files\\DjVuZone\\DjVuLibre\\'}
+
+        # Load the global config file first
+        if not sys.platform.startswith('win'):
+            filename = '/etc/djvubind/config'
+            if os.path.isfile(filename):
+                config_opts = djvubind.utils.parse_config(filename)
+                self.opts.update(config_opts)
 
         # Load the options from the user's config file, if it exists.
-        filename = os.path.expanduser('~/.config/djvubind/config')
+        if sys.platform.startswith('win'):
+            filename = os.path.expanduser('~\\Application Data\\djvubind\\config')
+        else:
+            filename = os.path.expanduser('~/.config/djvubind/config')
+        filename = os.path.normpath(filename)
         if os.path.isfile(filename):
             config_opts = djvubind.utils.parse_config(filename)
             self.opts.update(config_opts)
@@ -192,6 +205,10 @@ class Project:
             self.opts['ocr'] = (self.opts['ocr'] == 'True')
         else:
             msg = 'msg: Project.get_config(): No user config file found ({0}).'.format(filename)
+            if sys.platform.startswith('win'):
+                msg = msg + '\n' + 'A sample config file is included in the source (docs/config).'
+            else:
+                msg = msg + '\n' + 'A sample config file is included in the source (docs/config) or installed at /etc/djvubind/config.'
             print(msg, file=sys.stderr)
 
         # Overwrite or create values for certain command line options
@@ -210,9 +227,15 @@ class Project:
         if self.opts['cores'] == -1:
             self.opts['cores'] = djvubind.utils.cpu_count()
 
+        # Update windows PATH so that we can find the executable we need.
+        if sys.platform.startswith('win'):
+            if self.opts['win_path'] != '':
+                os.environ['PATH'] = '{0};{1}'.format(self.opts['win_path'], os.environ['PATH'])
+
         if self.opts['verbose']:
             print('Executing with these parameters:')
             print(self.opts)
+            print('')
 
         return None
 
@@ -254,10 +277,12 @@ class Project:
 
 
 if __name__ == '__main__':
+    version = '0.4.0'
+
     # Command line parsing
     usage = "usage: %prog [options] directory"
     description = "djvubind is designed to facilitate creating high-quality djvu files, including positional ocr, metadata, and bookmarks."
-    parser = optparse.OptionParser(usage, version='0.4.0', description=description)
+    parser = optparse.OptionParser(usage, version=version, description=description)
     parser.set_defaults(quiet=False, verbose=False,
                         no_ocr=False, ocr_engine=None, tesseract_options=None, cuneiform_options=None,
                         cover_front='cover_front.jpg', cover_back='cover_back.jpg',
@@ -276,6 +301,8 @@ if __name__ == '__main__':
 
     if options.quiet:
         sys.stdout = open(os.devnull, 'w')
+    if options.verbose:
+        print('djvubind version {0}'.format(version))
 
     # Sanity checks on command line arguments and options
     if len(args) == 2:
@@ -285,9 +312,10 @@ if __name__ == '__main__':
     elif (len(args) > 2):
         print('Too many arguments, check your command syntax.', file=sys.stderr)
         sys.exit(1)
-    if options.ocr_engine not in ['tesseract', 'cuneiform']:
-        print('err: __main__: ocr engine "{0}" is not supported.  Use "cuneiform" or "tesseract".'.format(options.ocr_engine), file=sys.stderr)
-        sys.exit(1)
+
+    # Project needs to be initialized before doing dependency checks, since the
+    # configuration file may supply PATH updates for Window environments.
+    proj = Project(options)
 
     # Dependency check
     # N.B. checks for ocr engines *should* take place in ocr.OCR(), since which
@@ -298,8 +326,6 @@ if __name__ == '__main__':
         if (not djvubind.utils.is_executable(dep)):
             print('err: __main__: external dependency ({0}) cannot be found.'.format(dep), file=sys.stderr)
             sys.exit(1)
-
-    proj = Project(options)
 
     # Increment the file name if a previous book.djvu already exists.
     i = 0

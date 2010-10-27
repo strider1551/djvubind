@@ -36,4 +36,11 @@ color_encoder = csepdjvu
 c44_options =
 cjb2_options = -lossy
 csepdjvu_options =
-minidjvu_options = --match --pages-per-dict=100
+minidjvu_options = --match --pages-per-dict 100
+
+# Windows related options.
+# Unless you have made changes to the system PATH, djvubind might not be able
+# to find programs that it needs, especially the djvulibre tools.  Put the
+# path to the directory that contains needed executables here.  Separate
+# directories with a ';'
+win_path = C:\Program Files\DjVuZone\DjVuLibre\;C:\Program Files\Tesseract-OCR;C:\Program Files\ImageMagick-6.6.5-Q16

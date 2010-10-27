@@ -6,9 +6,10 @@ import unittest
 
 # Check if we are working in the source tree or from an installed package and
 # adjust the python path accordingly
-loc = os.path.dirname(sys.argv[0])
+loc = os.path.realpath(__file__)
+loc = os.path.dirname(loc)
 loc = os.path.join(loc+'/', '../djvubind')
-loc = os.path.abspath(loc)
+loc = os.path.normpath(loc)
 if os.path.isdir(loc):
     sys.path.insert(0, os.path.dirname(loc))
 
@@ -21,7 +22,8 @@ class FunctColor(unittest.TestCase):
 
     def test_01AddColor(self):
         """
-        Checks for addition of proper ansi escape sequences.
+        Checks for addition of proper ansi escape sequences.  If the platform
+        is windows, the original text should be returned with no ansi sequences.
         """
         colors = {'pink': '\033[95mpink\033[0m',
                   'blue': '\033[94mblue\033[0m',
