@@ -23,9 +23,13 @@ has issues with buffer overflows.  If it crashes, tesseract will take over for t
 ========
 Installation
 
-Installation should be as simple as "./setup.py install".  You can add --dry-run
-if you want to check what will happen before doing it, or just use --help for
-all the details on options.
+Installation should be as simple as "./setup.py install" on Unix based systems.  You can
+add --dry-run if you want to check what will happen before doing it, or just use --help
+for all the details on options.  Those with debian based distros will probably be
+insterest in --install-layout=deb.
+
+Installation is not necessary, since djvubind can run straight from the unpacked source.
+This is actually preferred in a Windows environment
 
 N.b., at the moment most distributions are able to have python3 installed but do
 not use that version by default.  If this is the case (and it probably is),
