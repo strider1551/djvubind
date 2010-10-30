@@ -1,4 +1,10 @@
-v0.4.0
+v1.0.1
+
+* Bug Fix: Crash removing tempfile that might not be there (issue 22)
+* Bug Fix: config file being installed to the wrong location
+
+======
+v1.0.0
 
 * Bug Fix: better ocr parsing (issue 18)
 * Bug Fix: un-needed ocr character filtering (issue 20)

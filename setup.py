@@ -3,7 +3,7 @@
 from distutils.core import setup
 
 setup (name='djvubind',
-      version='1.0.0',
+      version='1.0.1',
       description='Creates djvu files with positional ocr, metadata, and bookmarks.',
       author='Adam Zajac',
       author_email='strider1551@gmail.com',
@@ -11,6 +11,6 @@ setup (name='djvubind',
       license='GPL-3',
       py_modules=['djvubind/__init__', 'djvubind/encode', 'djvubind/ocr', 'djvubind/organizer', 'djvubind/utils'],
       data_files=[('bin', ['bin/djvubind']),
-                  ('etc/djvubind', ['docs/config']),
+                  ('/etc/djvubind', ['docs/config']),
                   ('share/man/man1', ['docs/djvubind.1.gz'])]
 )

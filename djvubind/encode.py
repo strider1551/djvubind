@@ -213,6 +213,7 @@ class Encoder:
         if book.suppliments['bookmarks'] is not None:
             utils.simple_exec('djvused -e "set-outline {0}; save" "{1}"'.format(book.suppliments['bookmarks'], outfile))
 
-        os.remove(tempfile)
+        if os.path.isfile(tempfile):
+            os.remove(tempfile)
 
         return None
