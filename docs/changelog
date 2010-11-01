@@ -1,3 +1,10 @@
+v1.0.2
+
+* config file will automatically be placed in the home directory of the user
+  on first run (linux only) (issue 23).
+* Bug Fix: --no-ocr not functioning (issue 24)
+
+======
 v1.0.1
 
 * Bug Fix: Crash removing tempfile that might not be there (issue 22)
