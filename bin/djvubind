@@ -201,6 +201,9 @@ class Project:
             self.opts.update(config_opts)
         else:
             if os.path.isfile('/etc/djvubind/config'):
+                conf_dir = os.path.expanduser('~/.config/djvubind')
+                if not os.path.isdir(conf_dir):
+                    os.makedirs(conf_dir)
                 shutil.copy('/etc/djvubind/config', filename)
                 config_opts = djvubind.utils.parse_config(filename)
                 self.opts.update(config_opts)

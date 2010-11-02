@@ -1,7 +1,7 @@
 v1.0.2
 
 * config file will automatically be placed in the home directory of the user
-  on first run (linux only) (issue 23).
+  on first run (linux/mac only) (issue 23).
 * Bug Fix: --no-ocr not functioning (issue 24)
 
 ======

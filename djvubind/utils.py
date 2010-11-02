@@ -146,6 +146,7 @@ def list_files(dir='.', filter=None, extension=None):
     tmp = os.listdir(dir)
     contents = []
     for path in tmp:
+        path = os.path.join(dir, path)
         if os.path.isfile(path):
             contents.append(path)
     contents.sort()
