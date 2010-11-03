@@ -50,7 +50,7 @@ class Encoder:
 
         # Check that the outfile has been created.
         if not os.path.isfile(outfile):
-            msg = 'err: encode.enc_bitonal(): No encode errors, but "{0}" does not exist!'.format(outfile)
+            msg = 'err: encode.Encoder._c44(): No encode errors, but "{0}" does not exist!'.format(outfile)
             print(msg, file=sys.stderr)
             sys.exit(1)
 
@@ -70,15 +70,42 @@ class Encoder:
 
         # Check that the outfile has been created.
         if not os.path.isfile(outfile):
-            msg = 'err: encode.enc_bitonal(): No encode errors, but "{0}" does not exist!'.format(outfile)
+            msg = 'err: encode.Encoder._cpaldjvu(): No encode errors, but "{0}" does not exist!'.format(outfile)
             print(msg, file=sys.stderr)
             sys.exit(1)
 
         return None
 
-    def _csepdjvu(self, infile, outfile, dpi):
+    def _cpaldjvu(self, infile, outfile, dpi):
         """
         Encode files with cpaldjvu.
+        """
+
+        # Make sure that the image is in a format acceptable for c44
+        extension = infile.split('.')[-1]
+        if extension not in ['ppm']:
+            utils.execute('convert {0} {1}'.format(infile, 'temp.ppm'))
+            infile = 'temp.ppm'
+
+        # Encode
+        cmd = 'cpaldjvu -dpi {0} {1} "{2}" "{3}"'.format(dpi, self.opts['cpaldjvu_options'], infile, outfile)
+        utils.execute(cmd)
+
+        # Check that the outfile has been created.
+        if not os.path.isfile(outfile):
+            msg = 'err: encode.Encoder._cpaldjvu(): No encode errors, but "{0}" does not exist!'.format(outfile)
+            print(msg, file=sys.stderr)
+            sys.exit(1)
+
+        # Cleanup
+        if (infile == 'temp.ppm') and (os.path.isfile('temp.ppm')):
+            os.remove('temp.ppm')
+
+        return None
+
+    def _csepdjvu(self, infile, outfile, dpi):
+        """
+        Encode files with csepdjvu.
         """
 
         # Separate the bitonal text (scantailor's mixed mode) from everything else.
@@ -190,6 +217,13 @@ class Encoder:
                     self._cjb2(page.path, tempfile, page.dpi)
                     self.djvu_insert(tempfile, outfile)
                     os.remove(tempfile)
+        else:
+            for page in book.pages:
+                if not page.bitonal:
+                    msg = 'wrn: Invalid bitonal encoder.  Bitonal pages will be omitted.'
+                    msg = utils.color(msg, 'red')
+                    print(msg, file=sys.stderr)
+                    break
 
         # Encode and insert non-bitonal
         if self.opts['color_encoder'] == 'csepdjvu':
@@ -206,6 +240,20 @@ class Encoder:
                     self._c44(page.path, tempfile, page.dpi)
                     self.djvu_insert(tempfile, outfile, page_number)
                     os.remove(tempfile)
+        elif self.opts['color_encoder'] == 'cpaldjvu':
+            for page in book.pages:
+                if not page.bitonal:
+                    page_number = book.pages.index(page) + 1
+                    self._cpaldjvu(page.path, tempfile, page.dpi)
+                    self.djvu_insert(tempfile, outfile, page_number)
+                    os.remove(tempfile)
+        else:
+            for page in book.pages:
+                if not page.bitonal:
+                    msg = 'wrn: Invalid color encoder.  Colored pages will be omitted.'
+                    msg = utils.color(msg, 'red')
+                    print(msg, file=sys.stderr)
+                    break
 
         # Add ocr data
         if self.opts['ocr']:

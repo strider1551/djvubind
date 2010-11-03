@@ -20,11 +20,11 @@ tesseract_options =
 
 # Preferred encoder for bitonal images and non-bitonal images.
 # bitonal encoders: cjb2, minidjvu
-# color encoders: csepdjvu, c44
+# color encoders: csepdjvu, c44, cpaldjvu
 #
 # N.b., csepdjvu uses cjb2 to encode the pure black and pure white part of the
 # image, which will be the textual portion if you are using Scantailor's
-# "mixed mode"
+# "mixed mode".  Front and back covers, if present, are encoded with c44.
 bitonal_encoder = cjb2
 color_encoder = csepdjvu
 
@@ -35,6 +35,7 @@ color_encoder = csepdjvu
 # by djvubind, so don't bother setting that.
 c44_options =
 cjb2_options = -lossy
+cpaldjvu_options =
 csepdjvu_options =
 minidjvu_options = --match --pages-per-dict 100
 

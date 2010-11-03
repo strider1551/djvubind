@@ -179,6 +179,7 @@ class Project:
                      'color_encoder':'csepdjvu',
                      'c44_options':'',
                      'cjb2_options':'-lossy',
+                     'cpaldjvu_options':'',
                      'csepdjvu_options':'',
                      'minidjvu_options':'--match -pages-per-dict 100',
                      'win_path':'C:\\Program Files\\DjVuZone\\DjVuLibre\\'}
