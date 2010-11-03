@@ -38,6 +38,13 @@ class Encoder:
         Encode files with c44.
         """
 
+        # Make sure that the image is in a format acceptable for c44
+        extension = infile.split('.')[-1]
+        if extension not in ['pgm', 'ppm', 'jpg', 'jpeg']:
+            utils.execute('convert {0} {1}'.format(infile, 'temp.ppm'))
+            infile = 'temp.ppm'
+
+        # Encode
         cmd = 'c44 -dpi {0} {1} "{2}" "{3}"'.format(dpi, self.opts['c44_options'], infile, outfile)
         utils.execute(cmd)
 
@@ -46,6 +53,10 @@ class Encoder:
             msg = 'err: encode.enc_bitonal(): No encode errors, but "{0}" does not exist!'.format(outfile)
             print(msg, file=sys.stderr)
             sys.exit(1)
+
+        # Cleanup
+        if (infile == 'temp.ppm') and (os.path.isfile('temp.ppm')):
+            os.remove('temp.ppm')
 
         return None
 
@@ -186,6 +197,13 @@ class Encoder:
                 if not page.bitonal:
                     page_number = book.pages.index(page) + 1
                     self._csepdjvu(page.path, tempfile, page.dpi)
+                    self.djvu_insert(tempfile, outfile, page_number)
+                    os.remove(tempfile)
+        elif self.opts['color_encoder'] == 'c44':
+            for page in book.pages:
+                if not page.bitonal:
+                    page_number = book.pages.index(page) + 1
+                    self._c44(page.path, tempfile, page.dpi)
                     self.djvu_insert(tempfile, outfile, page_number)
                     os.remove(tempfile)
 
