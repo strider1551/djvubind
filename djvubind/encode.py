@@ -270,6 +270,7 @@ class Encoder:
             dpi = int(utils.execute('identify -ping -format %x "{0}"'.format(book.suppliments['cover_front']), capture=True).decode('ascii').split(' ')[0])
             self._c44(book.suppliments['cover_front'], tempfile, dpi)
             self.djvu_insert(tempfile, outfile, 1)
+            utils.execute('djvused -e "select 1; set-page-title cover; save" "{0}"'.format(outfile))
         if book.suppliments['cover_back'] is not None:
             dpi = int(utils.execute('identify -ping -format %x "{0}"'.format(book.suppliments['cover_back']), capture=True).decode('ascii').split(' ')[0])
             self._c44(book.suppliments['cover_back'], tempfile, dpi)

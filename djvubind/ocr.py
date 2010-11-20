@@ -17,6 +17,7 @@
 
 import difflib
 import os
+import re
 import shutil
 import string
 import sys
@@ -31,42 +32,76 @@ class hocrParser(HTMLParser):
     def __init__(self):
         HTMLParser.__init__(self)
         self.boxing = []
+        self.version = '0.8.0'
 
     def parse(self, data):
         self.data = data
+        if "class='ocr_cinfo'" in self.data:
+            self.version = '1.0.0'
         self.feed(data)
         return None
 
     def handle_starttag(self, tag, attrs):
-        if (tag == 'br') or (tag == 'p'):
-            if (len(self.boxing) > 0):
-                self.boxing.append('newline')
-        elif (tag == 'span'):
-            # Get the whole element (<span title="bbox n n n n">x</span>), not just the tag.
-            element = {}
-            element['start'] = self.data.find(self.get_starttag_text())
-            element['end'] = self.data.find('>', element['start'])
-            element['end'] = self.data.find('>', element['end']+1)
-            element['end'] = element['end'] + 1
-            element['text'] = self.data[element['start']:element['end']]
-            pos = element['text'].find('>') + 1
-            element['char'] = element['text'][pos:pos+1]
+        if self.version == '0.8.0':
+            if (tag == 'br') or (tag == 'p'):
+                if (len(self.boxing) > 0):
+                    self.boxing.append('newline')
+            elif (tag == 'span'):
+                # Get the whole element (<span title="bbox n n n n">x</span>), not just the tag.
+                element = {}
+                element['start'] = self.data.find(self.get_starttag_text())
+                element['end'] = self.data.find('>', element['start'])
+                element['end'] = self.data.find('>', element['end']+1)
+                element['end'] = element['end'] + 1
+                element['text'] = self.data[element['start']:element['end']]
+                pos = element['text'].find('>') + 1
+                element['char'] = element['text'][pos:pos+1]
 
-            # Figure out the boxing information from the title attribute.
-            attrs = dict(attrs)['title']
-            attrs = attrs.split()[1:]
-            positions = {'xmin':int(attrs[0]), 'ymin':int(attrs[1]), 'xmax':int(attrs[2]), 'ymax':int(attrs[3])}
-            positions['char'] = element['char']
+                # Figure out the boxing information from the title attribute.
+                attrs = dict(attrs)['title']
+                attrs = attrs.split()[1:]
+                positions = {'xmin':int(attrs[0]), 'ymin':int(attrs[1]), 'xmax':int(attrs[2]), 'ymax':int(attrs[3])}
+                positions['char'] = element['char']
 
-            # Escape special characters
-            subst = {'"': '\\"', "'":"\\'", '\\': '\\\\'}
-            if positions['char'] in subst.keys():
-                positions['char'] = subst[positions['char']]
-            self.boxing.append(positions)
+                # Escape special characters
+                subst = {'"': '\\"', "'":"\\'", '\\': '\\\\'}
+                if positions['char'] in subst.keys():
+                    positions['char'] = subst[positions['char']]
+                self.boxing.append(positions)
 
-            # A word break is indicated by a space after the </span> tag.
-            if (self.data[element['end']:element['end']+1] == ' '):
-                self.boxing.append('space')
+                # A word break is indicated by a space after the </span> tag.
+                if (self.data[element['end']:element['end']+1] == ' '):
+                    self.boxing.append('space')
+        elif self.version == '1.0.0':
+            if (tag == 'br') or (tag == 'p'):
+                if (len(self.boxing) > 0):
+                    self.boxing.append('newline')
+            elif (tag == 'span') and (('class', 'ocr_line') in attrs):
+                # Get the whole element, not just the tag.
+                element = {}
+                element['complete'] = re.search('{0}(.*?)</span>'.format(self.get_starttag_text()), self.data).group(0)
+                if "<span class='ocr_cinfo'" not in element['complete']:
+                    return None
+                element['text'] = re.search('">(.*)<span', element['complete']).group(1)
+                element['positions'] = re.search('title="x_bboxes (.*) ">', element['complete']).group(1)
+                element['positions'] = [int(item) for item in element['positions'].split()]
+
+                i = 0
+                for char in element['text']:
+                    slice = element['positions'][i:i+4]
+                    positions = {'char':char, 'xmin':slice[0], 'ymin':slice[1], 'xmax':slice[2], 'ymax':slice[3]}
+                    i = i+4
+
+                    # A word break is indicated by a space (go figure).
+                    if (char == ' '):
+                        self.boxing.append('space')
+                        continue
+
+                    # Escape special characters
+                    subst = {'"': '\\"', "'":"\\'", '\\': '\\\\'}
+                    if positions['char'] in subst.keys():
+                        positions['char'] = subst[positions['char']]
+                    self.boxing.append(positions)
 
         return None
 

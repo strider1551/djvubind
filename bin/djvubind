@@ -182,6 +182,8 @@ class Project:
                      'cpaldjvu_options':'',
                      'csepdjvu_options':'',
                      'minidjvu_options':'--match -pages-per-dict 100',
+                     'numbering_type':[],
+                     'numbering_start':[],
                      'win_path':'C:\\Program Files\\DjVuZone\\DjVuLibre\\'}
 
         # Load the global config file first
@@ -227,6 +229,10 @@ class Project:
             self.opts['tesseract_options'] = opts.tesseract_options
         if opts.cuneiform_options is not None:
             self.opts['cuneiform_options'] = opts.cuneiform_options
+        if opts.numbering_type is not None:
+            self.opts['numbering_type'] = opts.numbering_type
+        if opts.numbering_start is not None:
+            self.opts['numbering_start'] = [int(item) for item in opts.numbering_start]
         self.opts['verbose'] = opts.verbose
         self.opts['quiet'] = opts.quiet
 
@@ -297,7 +303,8 @@ if __name__ == '__main__':
     parser.set_defaults(quiet=False, verbose=False,
                         no_ocr=False, ocr_engine=None, tesseract_options=None, cuneiform_options=None,
                         cover_front='cover_front.jpg', cover_back='cover_back.jpg',
-                        metadata='metadata', bookmarks='bookmarks')
+                        metadata='metadata', bookmarks='bookmarks',
+                        numbering_type=None, numbering_start=None)
     parser.add_option("--cover-front", dest="cover_front", help="Specifies an alternate front cover image.  By default, '%default' is used if present.")
     parser.add_option("--cover-back", dest="cover_back", help="Specifies an alternate back cover image.  By default, '%default' is used if present.")
     parser.add_option("--ocr-engine", dest="ocr_engine", help="Select which ocr engine to use (cuneiform|tesseract).  By default, '%default' is used.")
@@ -305,6 +312,8 @@ if __name__ == '__main__':
     parser.add_option("--cuneiform-options", dest="cuneiform_options", help="Additional command line options to pass to cuneiform.")
     parser.add_option("--metadata", dest="metadata", help="Specifies an alternate metadata file.  By default, '%default' is used if present.")
     parser.add_option("--bookmarks", dest="bookmarks", help="Specifies an alternate bookmarks file.  By default, '%default' is used if present.")
+    parser.add_option("--numbering-type", dest="numbering_type", action="append", help="")
+    parser.add_option("--numbering-start", dest="numbering_start", action="append", help="")
     parser.add_option("--no-ocr", action="store_true", dest="no_ocr", help="Images will not be processed for text content.")
     parser.add_option("-q", "--quiet", action="store_true", dest="quiet")
     parser.add_option("-v", "--verbose", action="store_true", dest="verbose")
