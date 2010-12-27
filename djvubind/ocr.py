@@ -19,7 +19,6 @@ import difflib
 import os
 import re
 import shutil
-import string
 import sys
 
 from html.parser import HTMLParser

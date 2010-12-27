@@ -14,6 +14,9 @@
 #       along with this program; if not, write to the Free Software
 #       Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #       MA 02110-1301, USA.
+"""
+Contains code relevant to encoding images and metadata into a djvu format.
+"""
 
 import glob
 import os
@@ -177,7 +180,7 @@ class Encoder:
             print(msg, file=sys.stderr)
             sys.exit(1)
         if not utils.is_executable(self.opts['color_encoder']):
-            msg = 'err: encoder "{0}" is not installed.'.format(engine)
+            msg = 'err: encoder "{0}" is not installed.'.format(self.opts['color_encoder'])
             print(msg, file=sys.stderr)
             sys.exit(1)
 
