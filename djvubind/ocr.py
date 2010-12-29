@@ -14,6 +14,9 @@
 #       along with this program; if not, write to the Free Software
 #       Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #       MA 02110-1301, USA.
+"""
+Perform OCR operations using various engines.
+"""
 
 import difflib
 import os
@@ -32,6 +35,7 @@ class hocrParser(HTMLParser):
         HTMLParser.__init__(self)
         self.boxing = []
         self.version = '0.8.0'
+        self.data = ''
 
     def parse(self, data):
         self.data = data
@@ -87,8 +91,8 @@ class hocrParser(HTMLParser):
 
                 i = 0
                 for char in element['text']:
-                    slice = element['positions'][i:i+4]
-                    positions = {'char':char, 'xmin':slice[0], 'ymin':slice[1], 'xmax':slice[2], 'ymax':slice[3]}
+                    section = element['positions'][i:i+4]
+                    positions = {'char':char, 'xmin':section[0], 'ymin':section[1], 'xmax':section[2], 'ymax':section[3]}
                     i = i+4
 
                     # A word break is indicated by a space (go figure).

@@ -13,12 +13,16 @@
 #       You should have received a copy of the GNU General Public License
 #       along with this program; if not, write to the Free Software
 #       Foundation, Inc.
+"""
+Common and simple functions that are used throughout everything else.
+"""
+
 
 import os
 import subprocess
 import sys
 
-def color(text, color):
+def color(text, color_name):
     """
     Change the text color by adding ANSI escape sequences.
     """
@@ -35,8 +39,8 @@ def color(text, color):
     colors['red'] = '\033[91m'
     end = '\033[0m'
 
-    if color in colors.keys():
-        text = colors[color] + text + end
+    if color_name in colors.keys():
+        text = colors[color_name] + text + end
 
     return text
 
@@ -125,10 +129,10 @@ def execute(cmd, capture=False):
 
     with open(os.devnull, 'w') as void:
         if capture:
-            s = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=void)
+            sub = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=void)
         else:
-            s = subprocess.Popen(cmd, shell=True, stdout=void, stderr=void)
-    status = s.wait()
+            sub = subprocess.Popen(cmd, shell=True, stdout=void, stderr=void)
+    status = sub.wait()
 
     # Exit if the command fails for any reason.
     if status != 0:
@@ -136,25 +140,25 @@ def execute(cmd, capture=False):
         sys.exit(1)
 
     if capture:
-        text = s.stdout.read()
+        text = sub.stdout.read()
         return text
     else:
         return None
 
-def list_files(dir='.', filter=None, extension=None):
+def list_files(directory='.', contains=None, extension=None):
     """Find all files in a given directory that match criteria."""
-    tmp = os.listdir(dir)
+    tmp = os.listdir(directory)
     contents = []
     for path in tmp:
-        path = os.path.join(dir, path)
+        path = os.path.join(directory, path)
         if os.path.isfile(path):
             contents.append(path)
     contents.sort()
 
-    if filter is not None:
+    if contains is not None:
         remove = []
         for file in contents:
-            if filter not in file:
+            if contains not in file:
                 remove.append(file)
         for file in remove:
             contents.remove(file)

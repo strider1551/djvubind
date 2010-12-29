@@ -187,6 +187,10 @@ class Encoder:
         return None
 
     def djvu_insert(self, infile, djvufile, page_num=None):
+        """
+        Insert a single page djvu file into a multipage djvu file.  By default it will be
+        placed at the end, unless page_num is specified.
+        """
         if (not os.path.isfile(djvufile)):
             shutil.copy(infile, djvufile)
         elif page_num is None:
