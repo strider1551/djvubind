@@ -84,7 +84,7 @@ class Encoder:
         Encode files with cpaldjvu.
         """
 
-        # Make sure that the image is in a format acceptable for c44
+        # Make sure that the image is in a format acceptable for cpaldjvu
         extension = infile.split('.')[-1]
         if extension not in ['ppm']:
             utils.execute('convert {0} {1}'.format(infile, 'temp.ppm'))

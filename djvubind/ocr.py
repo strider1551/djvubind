@@ -91,6 +91,8 @@ class hocrParser(HTMLParser):
 
                 i = 0
                 for char in element['text']:
+                    if element['positions'][i:i+4] == []:
+                        continue
                     section = element['positions'][i:i+4]
                     positions = {'char':char, 'xmin':section[0], 'ymin':section[1], 'xmax':section[2], 'ymax':section[3]}
                     i = i+4
