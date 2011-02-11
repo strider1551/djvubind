@@ -69,6 +69,7 @@ class Page:
         self.bitonal = None
         self.dpi = 0
         self.text = ''
+        self.title = None
 
     def get_dpi(self):
         """

@@ -182,8 +182,9 @@ class Project:
                      'cpaldjvu_options':'',
                      'csepdjvu_options':'',
                      'minidjvu_options':'--match -pages-per-dict 100',
-                     'numbering_type':[],
-                     'numbering_start':[],
+                     'title_start':False,
+                     'title_exclude':{},
+                     'title_uppercase':False,
                      'win_path':'C:\\Program Files\\DjVuZone\\DjVuLibre\\'}
 
         # Load the global config file first
@@ -229,10 +230,15 @@ class Project:
             self.opts['tesseract_options'] = opts.tesseract_options
         if opts.cuneiform_options is not None:
             self.opts['cuneiform_options'] = opts.cuneiform_options
-        if opts.numbering_type is not None:
-            self.opts['numbering_type'] = opts.numbering_type
-        if opts.numbering_start is not None:
-            self.opts['numbering_start'] = [int(item) for item in opts.numbering_start]
+        if opts.title_start:
+            self.opts['title_start'] = opts.title_start
+        for special in opts.title_exclude:
+            if ':' in special:
+                special = special.split(':')
+                self.opts['title_exclude'][special[0]] = special[1]
+            else:
+                self.opts['title_exclude'][special] = None
+        self.opts['title_uppercase'] = opts.title_uppercase
         self.opts['verbose'] = opts.verbose
         self.opts['quiet'] = opts.quiet
 
@@ -294,7 +300,7 @@ class Project:
 
 
 if __name__ == '__main__':
-    version = '1.0.2'
+    version = '1.0.3beta'
 
     # Command line parsing
     usage = "usage: %prog [options] directory"
@@ -304,17 +310,18 @@ if __name__ == '__main__':
                         no_ocr=False, ocr_engine=None, tesseract_options=None, cuneiform_options=None,
                         cover_front='cover_front.jpg', cover_back='cover_back.jpg',
                         metadata='metadata', bookmarks='bookmarks',
-                        numbering_type=None, numbering_start=None)
+                        title_start=False, title_exclude=[], title_uppercase=False)
     parser.add_option("--cover-front", dest="cover_front", help="Specifies an alternate front cover image.  By default, '%default' is used if present.")
     parser.add_option("--cover-back", dest="cover_back", help="Specifies an alternate back cover image.  By default, '%default' is used if present.")
+    parser.add_option("--metadata", dest="metadata", help="Specifies an alternate metadata file.  By default, '%default' is used if present.")
+    parser.add_option("--bookmarks", dest="bookmarks", help="Specifies an alternate bookmarks file.  By default, '%default' is used if present.")
+    parser.add_option("--no-ocr", action="store_true", dest="no_ocr", help="Images will not be processed for text content.")
     parser.add_option("--ocr-engine", dest="ocr_engine", help="Select which ocr engine to use (cuneiform|tesseract).  By default, '%default' is used.")
     parser.add_option("--tesseract-options", dest="tesseract_options", help="Additional command line options to pass to tesseract.")
     parser.add_option("--cuneiform-options", dest="cuneiform_options", help="Additional command line options to pass to cuneiform.")
-    parser.add_option("--metadata", dest="metadata", help="Specifies an alternate metadata file.  By default, '%default' is used if present.")
-    parser.add_option("--bookmarks", dest="bookmarks", help="Specifies an alternate bookmarks file.  By default, '%default' is used if present.")
-    parser.add_option("--numbering-type", dest="numbering_type", action="append", help="")
-    parser.add_option("--numbering-start", dest="numbering_start", action="append", help="")
-    parser.add_option("--no-ocr", action="store_true", dest="no_ocr", help="Images will not be processed for text content.")
+    parser.add_option("--title-start", dest="title_start", help="The image filename that is page 1.  Pages before this will titled with roman numerals.")
+    parser.add_option("--title-exclude", action="append", dest="title_exclude", help="An image that should be excluded from page numbering.  An alternate title can be provided after a colon (e.g. page_01.tif:cover).")
+    parser.add_option("--title-uppercase", action="store_true", dest="title_uppercase", help="Use uppercase roman numerals instead of lowercase.")
     parser.add_option("-q", "--quiet", action="store_true", dest="quiet")
     parser.add_option("-v", "--verbose", action="store_true", dest="verbose")
     (options, args) = parser.parse_args(sys.argv)
@@ -355,6 +362,7 @@ if __name__ == '__main__':
 
     # Add files to the project
     print('{0} Collecting files to be processed.'.format(djvubind.utils.color('*', 'green')))
+    counter = djvubind.utils.counter(start=1, roman=True)
     if os.path.isfile(options.cover_front):
         proj.add_file(options.cover_front, 'cover_front')
     if os.path.isfile(options.cover_back):
@@ -368,6 +376,14 @@ if __name__ == '__main__':
         ext = ext.lower()
         if (ext in ['tif', 'tiff']) and (filename not in [options.cover_front, options.cover_back]):
             proj.add_file(filename, 'page')
+            if proj.opts['title_start'] is not False:
+                filename = os.path.basename(filename)
+                if proj.opts['title_start'] == filename:
+                    counter = djvubind.utils.counter(start=1)
+                if filename in proj.opts['title_exclude']:
+                    proj.book.pages[-1].title = proj.opts['title_exclude'][filename]
+                else:
+                    proj.book.pages[-1].title = next(counter)
 
     print('{0} Analyzing image information.'.format(djvubind.utils.color('*', 'green')))
     proj.analyze()

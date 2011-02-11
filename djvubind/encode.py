@@ -287,6 +287,25 @@ class Encoder:
         if book.suppliments['bookmarks'] is not None:
             utils.simple_exec('djvused -e "set-outline {0}; save" "{1}"'.format(book.suppliments['bookmarks'], outfile))
 
+        script = ''
+        index = 1
+        if book.suppliments['cover_front'] is not None:
+            script += 'select '+str(index)+'; set-page-title "cover";\n'
+            index = index + 1
+        for page in book.pages:
+            if page.title is None:
+                index = index + 1
+            else:
+                script += 'select '+str(index)+'; set-page-title "'+str(page.title)+'";\n'
+                index = index + 1
+        if book.suppliments['cover_back'] is not None:
+            script += 'select '+str(index)+'; set-page-title "back cover";\n'
+        script += 'save'
+        with open('titles', 'w') as handle:
+            handle.write(script)
+        utils.simple_exec('djvused -f titles "{0}"'.format(outfile))
+        #os.remove('titles')
+
         if os.path.isfile(tempfile):
             os.remove(tempfile)
 

@@ -22,6 +22,23 @@ import os
 import subprocess
 import sys
 
+roman_numeral_map = (('m',  1000), ('cm', 900), ('d',  500),
+                     ('cd', 400), ('c',  100), ('xc', 90),
+                     ('l',  50), ('xl', 40), ('x',  10),
+                     ('ix', 9), ('v',  5), ('iv', 4), ('i',  1))
+
+def arabic_to_roman(number):
+    """
+    convert arabic integer to roman numeral
+    """
+
+    roman = ''
+    for numeral, integer in roman_numeral_map:
+        while number >= integer:
+            roman = roman + numeral
+            number = number - integer
+    return roman
+
 def color(text, color_name):
     """
     Change the text color by adding ANSI escape sequences.
@@ -43,6 +60,27 @@ def color(text, color_name):
         text = colors[color_name] + text + end
 
     return text
+
+def counter(start=0, end=None, incriment=1, roman=False):
+    """
+    Basic generator that increases the return with each call.  The return is a string.
+    """
+
+    current = start
+    if roman:
+        yield arabic_to_roman(current)
+    else:
+        yield str(current)
+
+    while True:
+        if (end is not None) and (current >= end):
+            return
+        else:
+            current = current + incriment
+            if roman:
+                yield arabic_to_roman(current)
+            else:
+                yield str(current)
 
 def split_cmd(start, files, end=''):
     """
