@@ -304,7 +304,7 @@ class Encoder:
         with open('titles', 'w') as handle:
             handle.write(script)
         utils.simple_exec('djvused -f titles "{0}"'.format(outfile))
-        #os.remove('titles')
+        os.remove('titles')
 
         if os.path.isfile(tempfile):
             os.remove(tempfile)

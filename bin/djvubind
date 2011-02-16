@@ -87,7 +87,7 @@ class Project:
     def __init__(self, opts):
         self.get_config(opts)
 
-        self.out = 'book.djvu'
+        self.out = os.path.abspath('book.djvu')
 
         self.book = djvubind.organizer.Book()
         self.enc = djvubind.encode.Encoder(self.opts)
@@ -359,6 +359,11 @@ if __name__ == '__main__':
     while os.path.isfile(proj.out):
         i = i + 1
         proj.out = 'book(' + str(i) + ').djvu'
+        proj.out = os.path.abspath(proj.out)
+
+    # Change to working directory if necessary
+    if len(args) == 2:
+        os.chdir(args[1])
 
     # Add files to the project
     print('{0} Collecting files to be processed.'.format(djvubind.utils.color('*', 'green')))
