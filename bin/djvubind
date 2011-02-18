@@ -389,6 +389,8 @@ if __name__ == '__main__':
                     proj.book.pages[-1].title = proj.opts['title_exclude'][filename]
                 else:
                     proj.book.pages[-1].title = next(counter)
+                    if proj.opts['title_uppercase']:
+                        proj.book.pages[-1].title = proj.book.pages[-1].title.upper()
 
     print('{0} Analyzing image information.'.format(djvubind.utils.color('*', 'green')))
     proj.analyze()
