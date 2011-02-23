@@ -26,6 +26,7 @@ roman_numeral_map = (('m',  1000), ('cm', 900), ('d',  500),
                      ('cd', 400), ('c',  100), ('xc', 90),
                      ('l',  50), ('xl', 40), ('x',  10),
                      ('ix', 9), ('v',  5), ('iv', 4), ('i',  1))
+html_codes = (['&', '&amp;'],['<', '&lt;'],['>', '&gt;'],['"', '&quot;'])
 
 def arabic_to_roman(number):
     """
@@ -81,6 +82,16 @@ def counter(start=0, end=None, incriment=1, roman=False):
                 yield arabic_to_roman(current)
             else:
                 yield str(current)
+
+def replace_html_codes(text):
+    """
+    Replaces html ampersand codes (e.g. &gt;) with their actual character (e.g. >)
+    """
+
+    for code in html_codes:
+        text = text.replace(code[1], code[0])
+
+    return text
 
 def split_cmd(start, files, end=''):
     """

@@ -87,6 +87,7 @@ class hocrParser(HTMLParser):
                     return None
                 element['text'] = re.search('">(.*)<span', element['complete']).group(1)
                 element['text'] = re.sub('<[\w\/\.]*>', '', element['text'])
+                element['text'] = utils.replace_html_codes(element['text'])
                 element['positions'] = re.search('title="x_bboxes (.*) ">', element['complete']).group(1)
                 element['positions'] = [int(item) for item in element['positions'].split()]
 
