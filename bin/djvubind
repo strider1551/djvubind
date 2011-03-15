@@ -300,7 +300,7 @@ class Project:
 
 
 if __name__ == '__main__':
-    version = '1.0.3beta'
+    version = '1.1.0'
 
     # Command line parsing
     usage = "usage: %prog [options] directory"

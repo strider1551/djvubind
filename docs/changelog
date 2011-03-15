@@ -1,6 +1,13 @@
+v1.1.0
+
+* Bug Fix: No file created if working outside of current directory (issue 27).
+* support for cuneiform-0.9.0 and above (issue 15).
+* support for page titles (issue 25).
+
+======
 v1.0.2
 
-* Bug Fix: --no-ocr not functioning (issue 24)
+* Bug Fix: --no-ocr not functioning (issue 24).
 * Config file will automatically be placed in the home directory of the user
   on first run (linux/mac only) (issue 23).
 * cpaldjvu added as a color encoder.
