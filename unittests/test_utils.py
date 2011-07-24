@@ -45,5 +45,28 @@ class FunctColor(unittest.TestCase):
         out = djvubind.utils.color(text, 'mauve')
         self.assertEqual(text, out)
 
+
+
+class FunctArabicToRoman(unittest.TestCase):
+    """
+    Tests for utils.arabic_to_roman()
+    """
+
+    def test_01SampleNumbers(self):
+        """
+        Checks for the correct conversion of some sample numbers.
+        """
+        numbers = {'vi':6, 'x':10, 'iv':4, 'xlix':49}
+        for roman in numbers.keys():
+            out = djvubind.utils.arabic_to_roman(numbers[roman])
+            self.assertEqual(roman, out)
+
+    def test_02NonInteger(self):
+        """
+        Checks that a TypeError is raised for non-integer arguments.
+        """
+        self.assertRaises(TypeError, djvubind.utils.arabic_to_roman, '5')
+
+
 if __name__ == "__main__":
     unittest.main()
