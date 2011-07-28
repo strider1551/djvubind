@@ -85,10 +85,10 @@ class Page:
         Check if the image is bitonal.
         """
 
-        if utils.execute('identify -ping "{0}"'.format(self.path), capture=True).decode('ascii').find('Bilevel') == -1:
+        if utils.execute('identify -ping "{0}"'.format(self.path), capture=True).decode('utf8').find('Bilevel') == -1:
             self.bitonal = False
         else:
-            if (utils.execute('identify -ping -format %z "{0}"'.format(self.path), capture=True).decode('ascii') != ('1' + os.linesep)):
+            if (utils.execute('identify -ping -format %z "{0}"'.format(self.path), capture=True).decode('utf8') != ('1' + os.linesep)):
                 print("msg: {0}: Bitonal image but with a depth greater than 1.  Modifying image depth.".format(os.path.split(self.path)[1]))
                 utils.execute('mogrify -colors 2 "{0}"'.format(self.path))
             self.bitonal = True

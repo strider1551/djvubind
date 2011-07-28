@@ -70,8 +70,10 @@ class ThreadOCR(threading.Thread):
             try:
                 # Process the page
                 page = self.queue.get()
-                boxing = self.ocr.analyze_image(page.path)
-                page.text = self.ocr.translate(boxing)
+                #boxing = self.ocr.analyze_image(page.path)
+                #page.text = self.ocr.translate(boxing)
+                boxing = self.ocr.analyze(page.path)
+                page.text = djvubind.ocr.translate(boxing)
             except queue.Empty:
                 self.quit = True
             finally:
@@ -91,7 +93,8 @@ class Project:
 
         self.book = djvubind.organizer.Book()
         self.enc = djvubind.encode.Encoder(self.opts)
-        self.ocr = djvubind.ocr.OCR(self.opts)
+        #self.ocr = djvubind.ocr.OCR(self.opts)
+        self.ocr = djvubind.ocr.engine(self.opts['ocr_engine'], self.opts['tesseract_options'])
 
     def add_file(self, filename, type='page'):
         """
@@ -301,7 +304,7 @@ class Project:
 
 if __name__ == '__main__':
     version  = '1.1.0'
-    version += '\n$Revision: a7011efb01b1 $'.replace('$', '')
+    version += '\n$Revision: 3c2a5512b628 $'.replace('$', '')
 
     # Command line parsing
     usage = "usage: %prog [options] directory"
