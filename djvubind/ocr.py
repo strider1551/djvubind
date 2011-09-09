@@ -138,6 +138,148 @@ class djvuPageBox(BoundingBox):
         return page+'\n  '+lines+')'
 
 
+class hocrParser(HTMLParser):
+
+    def __init__(self):
+        HTMLParser.__init__(self)
+        self.boxing = []
+        self.version = '0.8.0'
+        self.data = ''
+
+    def parse(self, data):
+        self.data = data
+        if "class='ocr_cinfo'" in self.data:
+            self.version = '1.0.0'
+        self.feed(data)
+        return None
+
+    def handle_starttag(self, tag, attrs):
+        if self.version == '0.8.0':
+            if (tag == 'br') or (tag == 'p'):
+                if (len(self.boxing) > 0):
+                    self.boxing.append('newline')
+            elif (tag == 'span'):
+                # Get the whole element (<span title="bbox n n n n">x</span>), not just the tag.
+                element = {}
+                element['start'] = self.data.find(self.get_starttag_text())
+                element['end'] = self.data.find('>', element['start'])
+                element['end'] = self.data.find('>', element['end']+1)
+                element['end'] = element['end'] + 1
+                element['text'] = self.data[element['start']:element['end']]
+                pos = element['text'].find('>') + 1
+                element['char'] = element['text'][pos:pos+1]
+
+                # Figure out the boxing information from the title attribute.
+                attrs = dict(attrs)['title']
+                attrs = attrs.split()[1:]
+                positions = {'xmin':int(attrs[0]), 'ymin':int(attrs[1]), 'xmax':int(attrs[2]), 'ymax':int(attrs[3])}
+                positions['char'] = element['char']
+
+                # Escape special characters
+                subst = {'"': '\\"', "'":"\\'", '\\': '\\\\'}
+                if positions['char'] in subst.keys():
+                    positions['char'] = subst[positions['char']]
+                self.boxing.append(positions)
+
+                # A word break is indicated by a space after the </span> tag.
+                if (self.data[element['end']:element['end']+1] == ' '):
+                    self.boxing.append('space')
+        elif self.version == '1.0.0':
+            if (tag == 'br') or (tag == 'p'):
+                if (len(self.boxing) > 0):
+                    self.boxing.append('newline')
+            elif (tag == 'span') and (('class', 'ocr_line') in attrs):
+                # Get the whole element, not just the tag.
+                element = {}
+                element['complete'] = re.search('{0}(.*?)</span>'.format(self.get_starttag_text()), self.data).group(0)
+                if "<span class='ocr_cinfo'" not in element['complete']:
+                    return None
+                element['text'] = re.search('">(.*)<span', element['complete']).group(1)
+                element['text'] = re.sub('<[\w\/\.]*>', '', element['text'])
+                element['text'] = utils.replace_html_codes(element['text'])
+                element['positions'] = re.search('title="x_bboxes (.*) ">', element['complete']).group(1)
+                element['positions'] = [int(item) for item in element['positions'].split()]
+
+                i = 0
+                for char in element['text']:
+                    if element['positions'][i:i+4] == []:
+                        continue
+                    section = element['positions'][i:i+4]
+                    positions = {'char':char, 'xmin':section[0], 'ymin':section[1], 'xmax':section[2], 'ymax':section[3]}
+                    i = i+4
+
+                    # A word break is indicated by a space (go figure).
+                    if (char == ' '):
+                        self.boxing.append('space')
+                        continue
+
+                    # Escape special characters
+                    subst = {'"': '\\"', "'":"\\'", '\\': '\\\\'}
+                    if positions['char'] in subst.keys():
+                        positions['char'] = subst[positions['char']]
+                    self.boxing.append(positions)
+
+        return None
+
+
+class Cuneiform(object):
+    """
+    Everything needed to work with the Cuneiform OCR engine.
+    """
+
+    def __init__(self, options):
+        if not utils.is_executable('cuneiform'):
+            raise OSError('Cuneiform is either not installed or not in the configured path.')
+
+        self.options = options
+
+    def analyze(self, filename):
+        """
+        Performs OCR analysis on the image and returns a djvuPageBox object.
+        """
+
+        status = utils.simple_exec('cuneiform -f hocr -o "{0}.hocr" {1} "{0}"'.format(filename, self.options))
+        if status != 0:
+            if status == -6:
+                # Cuneiform seems to have a buffer flow on every other image, and even more without the --singlecolumn option.
+                msg = '\nwrn: cuneiform encountered a buffer overflow on "{0}".'.format(os.path.split(filename)[1])
+                msg = utils.color(msg, 'red')
+                print(msg, file=sys.stderr)
+            else:
+                # Cuneiform crashes on blank images (exit status 1, message about failing to detect something).
+                # They do not consider this behavior a bug. See https://bugs.launchpad.net/cuneiform-linux/+bug/445357
+                # Also, it seems that <=cuneiform-0.7.0 can only process bmp images.
+                msg = 'wrn: cuneiform crashed on "{0}".'.format(os.path.split(filename)[1])
+                msg = utils.color(msg, 'red')
+                print(msg, file=sys.stderr)
+            return []
+
+        with open('{0}.hocr'.format(filename), 'r', encoding='utf8') as handle:
+            text = handle.read()
+
+        # Clean up excess files.
+        basename = os.path.split(filename)[1]
+        basename = basename.split('.')[:-1]
+        basename = '.'.join(basename)
+        if os.path.isdir(basename+'_files'):
+            shutil.rmtree(basename+'_files')
+        os.remove(filename+'.hocr')
+
+        parser = hocrParser()
+        parser.parse(text)
+
+        # Cuneiform hocr inverts the y-axis compared to what djvu expects.  The total height of the
+        # image is needed to invert the values.
+        height = int(utils.execute('identify -format %H "{0}"'.format(filename), capture=True))
+        for entry in parser.boxing:
+            if entry not in ['space', 'newline']:
+                ymin, ymax = entry['ymin'], entry['ymax']
+                entry['ymin'] = height - ymax
+                entry['ymax'] = height - ymin
+
+        return parser.boxing
+
+
 class Tesseract(object):
     """
     Everything needed to work with the Tesseract OCR engine.
@@ -326,7 +468,7 @@ def engine(ocr_engine, options=''):
     if ocr_engine == 'tesseract':
         return Tesseract(options)
     elif ocr_engine == 'cuneiform':
-        return OCR({'ocr_engine':'cuneiform', 'cuneiform_options':options})
+        return Cuneiform(options)
     else:
         raise ValueError('The requested ocr engine ({0}) is not supported.'.format(ocr_engine))
 
@@ -364,260 +506,3 @@ def translate(boxing):
         return page.encode()
     else:
         return ''
-
-##############################
-# Here there be old code!
-# (that might still be in use)
-##############################
-
-
-class hocrParser(HTMLParser):
-
-    def __init__(self):
-        HTMLParser.__init__(self)
-        self.boxing = []
-        self.version = '0.8.0'
-        self.data = ''
-
-    def parse(self, data):
-        self.data = data
-        if "class='ocr_cinfo'" in self.data:
-            self.version = '1.0.0'
-        self.feed(data)
-        return None
-
-    def handle_starttag(self, tag, attrs):
-        if self.version == '0.8.0':
-            if (tag == 'br') or (tag == 'p'):
-                if (len(self.boxing) > 0):
-                    self.boxing.append('newline')
-            elif (tag == 'span'):
-                # Get the whole element (<span title="bbox n n n n">x</span>), not just the tag.
-                element = {}
-                element['start'] = self.data.find(self.get_starttag_text())
-                element['end'] = self.data.find('>', element['start'])
-                element['end'] = self.data.find('>', element['end']+1)
-                element['end'] = element['end'] + 1
-                element['text'] = self.data[element['start']:element['end']]
-                pos = element['text'].find('>') + 1
-                element['char'] = element['text'][pos:pos+1]
-
-                # Figure out the boxing information from the title attribute.
-                attrs = dict(attrs)['title']
-                attrs = attrs.split()[1:]
-                positions = {'xmin':int(attrs[0]), 'ymin':int(attrs[1]), 'xmax':int(attrs[2]), 'ymax':int(attrs[3])}
-                positions['char'] = element['char']
-
-                # Escape special characters
-                subst = {'"': '\\"', "'":"\\'", '\\': '\\\\'}
-                if positions['char'] in subst.keys():
-                    positions['char'] = subst[positions['char']]
-                self.boxing.append(positions)
-
-                # A word break is indicated by a space after the </span> tag.
-                if (self.data[element['end']:element['end']+1] == ' '):
-                    self.boxing.append('space')
-        elif self.version == '1.0.0':
-            if (tag == 'br') or (tag == 'p'):
-                if (len(self.boxing) > 0):
-                    self.boxing.append('newline')
-            elif (tag == 'span') and (('class', 'ocr_line') in attrs):
-                # Get the whole element, not just the tag.
-                element = {}
-                element['complete'] = re.search('{0}(.*?)</span>'.format(self.get_starttag_text()), self.data).group(0)
-                if "<span class='ocr_cinfo'" not in element['complete']:
-                    return None
-                element['text'] = re.search('">(.*)<span', element['complete']).group(1)
-                element['text'] = re.sub('<[\w\/\.]*>', '', element['text'])
-                element['text'] = utils.replace_html_codes(element['text'])
-                element['positions'] = re.search('title="x_bboxes (.*) ">', element['complete']).group(1)
-                element['positions'] = [int(item) for item in element['positions'].split()]
-
-                i = 0
-                for char in element['text']:
-                    if element['positions'][i:i+4] == []:
-                        continue
-                    section = element['positions'][i:i+4]
-                    positions = {'char':char, 'xmin':section[0], 'ymin':section[1], 'xmax':section[2], 'ymax':section[3]}
-                    i = i+4
-
-                    # A word break is indicated by a space (go figure).
-                    if (char == ' '):
-                        self.boxing.append('space')
-                        continue
-
-                    # Escape special characters
-                    subst = {'"': '\\"', "'":"\\'", '\\': '\\\\'}
-                    if positions['char'] in subst.keys():
-                        positions['char'] = subst[positions['char']]
-                    self.boxing.append(positions)
-
-        return None
-
-
-class OCR:
-    """
-    An intelligent ocr process that can work with numerous ocr engines.
-    """
-
-    def __init__(self, opts):
-        self.opts = opts
-
-        self.dep_check()
-
-    def _cuneiform(self, filename):
-        """"
-        Process the filename with cuneiform.
-        """
-
-        status = utils.simple_exec('cuneiform -f hocr -o "{0}.hocr" {1} "{0}"'.format(filename, self.opts['cuneiform_options']))
-        if status != 0:
-            if status == -6:
-                # Cuneiform seems to have a buffer flow on every other image, and even more without the --singlecolumn option.
-                msg = '\nwrn: cuneiform encountered a buffer overflow on "{0}".'.format(os.path.split(filename)[1])
-                msg = utils.color(msg, 'red')
-                print(msg, file=sys.stderr)
-            else:
-                # Cuneiform crashes on blank images (exit status 1, message about failing to detect something).
-                # They do not consider this behavior a bug. See https://bugs.launchpad.net/cuneiform-linux/+bug/445357
-                # Also, it seems that <=cuneiform-0.7.0 can only process bmp images.
-                msg = 'wrn: cuneiform crashed on "{0}".'.format(os.path.split(filename)[1])
-                msg = utils.color(msg, 'red')
-                print(msg, file=sys.stderr)
-            return []
-
-        with open('{0}.hocr'.format(filename), 'r', encoding='utf8') as handle:
-            text = handle.read()
-
-        # Clean up excess files.
-        basename = os.path.split(filename)[1]
-        basename = basename.split('.')[:-1]
-        basename = '.'.join(basename)
-        if os.path.isdir(basename+'_files'):
-            shutil.rmtree(basename+'_files')
-        os.remove(filename+'.hocr')
-
-        parser = hocrParser()
-        parser.parse(text)
-
-        # Cuneiform hocr inverts the y-axis compared to what djvu expects.  The total height of the
-        # image is needed to invert the values.
-        height = int(utils.execute('identify -format %H "{0}"'.format(filename), capture=True))
-        for entry in parser.boxing:
-            if entry not in ['space', 'newline']:
-                ymin, ymax = entry['ymin'], entry['ymax']
-                entry['ymin'] = height - ymax
-                entry['ymax'] = height - ymin
-
-        return parser.boxing
-
-    def _tesseract(self, filename):
-        """
-        Process the filename with tesseract.
-        """
-
-        basename = os.path.split(filename)[1].split('.')[0]
-        tesseractpath = utils.get_executable_path('tesseract')
-
-        status_a = utils.simple_exec('{0} "{1}" "{2}_box" {3} batch makebox'.format(tesseractpath, filename, basename, self.opts['tesseract_options']))
-        status_b = utils.simple_exec('{0} "{1}" "{2}_txt" {3} batch'.format(tesseractpath, filename, basename, self.opts['tesseract_options']))
-        if (status_a != 0) or (status_b != 0):
-            msg = 'wrn: Tesseract failed on "{0}".  There will be no ocr for this page.'.format(os.path.split(filename)[1])
-            msg = utils.color(msg, 'red')
-            print(msg, file=sys.stderr)
-            return []
-
-        # tesseract-3.00 changed the .txt extension to .box so check which file was created.
-        if os.path.exists(basename + '_box.txt'):
-            boxfilename = basename + '_box.txt'
-        else:
-            boxfilename = basename + '_box.box'
-
-        with open(boxfilename, 'r', encoding='utf8') as handle:
-            boxfile = handle.read()
-        with open(basename+'_txt.txt', 'r', encoding='utf8') as handle:
-            textfile = handle.read()
-
-        os.remove(boxfilename)
-        os.remove(basename+'_txt.txt')
-
-        parser = boxfileParser()
-        parser.image = filename
-        parser.parse(boxfile, textfile)
-
-        return parser.boxing
-
-    def analyze_image(self, filename):
-        """
-        Retrieve boxing information.  This should return a list of each character
-        and it's information in dictionary form, or 'newline' or 'space'. E.g.:
-        [{char:'a', 'xmin':12, 'ymin':50, 'xmax':15, 'ymax':53}, 'space', ...]
-        """
-
-        if self.opts['ocr_engine'] == 'tesseract':
-            boxing = self._tesseract(filename)
-        elif self.opts['ocr_engine'] == 'cuneiform':
-            boxing = self._cuneiform(filename)
-        else:
-            msg = 'wrn: ocr engine "{0}" is not supported.'.format(self.opts['ocr_engine'])
-            print(msg, file=sys.stderr)
-            sys.exit(1)
-
-        return boxing
-
-    def analyze(self, filename):
-        return self.analyze_image(filename)
-
-    def dep_check(self):
-        """
-        Check for ocr engine availability.
-        """
-
-        engine = self.opts['ocr_engine']
-
-        if not utils.is_executable(engine):
-            msg = 'wrn: ocr engine "{0}" is not installed. Tesseract will be used instead.'.format(engine)
-            msg = utils.color(msg, 'red')
-            print(msg, file=sys.stderr)
-            self.opts['ocr_engine'] = 'tesseract'
-        if (engine != 'tesseract') and (not utils.is_executable('tesseract')):
-            msg = 'err: ocr engine "{0}" is not installed.  Tesseract is a mandatory dependency.'.format('tesseract')
-            print(msg, file=sys.stderr)
-            sys.exit(1)
-
-        return None
-
-    def translate(self, boxing):
-        """
-        Translate djvubind's internal boxing information into a djvused format.
-        """
-
-        page = djvuPageBox()
-        line = djvuLineBox()
-        word = djvuWordBox()
-        for entry in boxing:
-            if entry == 'newline':
-                if (line.children != []):
-                    if (word.children != []):
-                        line.add_element(word)
-                    page.add_element(line)
-                line = djvuLineBox()
-                word = djvuWordBox()
-            elif entry == 'space':
-                if (word.children != []):
-                    line.add_element(word)
-                word = djvuWordBox()
-            else:
-                temp = BoundingBox()
-                temp.perimeter = {'xmax':entry['xmax'], 'xmin':entry['xmin'], 'ymax':entry['ymax'], 'ymin':entry['ymin']}
-                temp.children = [entry['char']]
-                word.add_element(temp)
-        if (word.children != []):
-            line.add_element(word)
-        if (line.children != []):
-            page.add_element(line)
-
-        if (page.children != []):
-            return page.encode()
-        else:
-            return ''
