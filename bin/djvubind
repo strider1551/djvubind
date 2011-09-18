@@ -304,7 +304,7 @@ class Project:
 
 if __name__ == '__main__':
     version  = '1.1.0'
-    version += '\n$Revision: 3c2a5512b628 $'.replace('$', '')
+    version += '\n$Revision: cbcd1ad71834 $'.replace('$', '')
 
     # Command line parsing
     usage = "usage: %prog [options] directory"
@@ -383,7 +383,7 @@ if __name__ == '__main__':
     for filename in djvubind.utils.list_files():
         ext = filename.split('.')[-1]
         ext = ext.lower()
-        if (ext in ['tif', 'tiff']) and (filename not in [options.cover_front, options.cover_back]):
+        if (ext in ['tif', 'tiff', 'pnm', 'pbm']) and (filename not in [options.cover_front, options.cover_back]):
             proj.add_file(filename, 'page')
             if proj.opts['title_start'] is not False:
                 filename = os.path.basename(filename)
