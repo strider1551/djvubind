@@ -485,10 +485,9 @@ def translate(boxing):
     word = djvuWordBox()
     for entry in boxing:
         if entry == 'newline':
-            if (line.children != []):
-                if (word.children != []):
-                    line.add_element(word)
-                page.add_element(line)
+            if (word.children != []):
+                line.add_element(word)
+            page.add_element(line)
             line = djvuLineBox()
             word = djvuWordBox()
         elif entry == 'space':

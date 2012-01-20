@@ -9,8 +9,13 @@ Table of Contents
 .. toctree::
    :maxdepth: 2
 
+   installation
+   usage
+
 Djvubind modules
 ================
+
+This chapter is a reference for any developer who wishes to contribute to djvubind.
 
 djvubind.ocr
 ------------
