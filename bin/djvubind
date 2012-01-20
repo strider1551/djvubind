@@ -304,7 +304,7 @@ class Project:
 
 if __name__ == '__main__':
     version  = '1.1.0'
-    version += '\n$Revision: cbcd1ad71834 $'.replace('$', '')
+    version += '\n$Revision: a6f5b26455a0 $'.replace('$', '')
 
     # Command line parsing
     usage = "usage: %prog [options] directory"
@@ -395,6 +395,12 @@ if __name__ == '__main__':
                     proj.book.pages[-1].title = next(counter)
                     if proj.opts['title_uppercase']:
                         proj.book.pages[-1].title = proj.book.pages[-1].title.upper()
+
+    if len(proj.book.pages) == 0:
+        print('  No files found to bind.')
+        sys.exit(0)
+    else:
+        print('  Binding a total of {0} file(s).'.format(len(proj.book.pages)))
 
     print('{0} Analyzing image information.'.format(djvubind.utils.color('*', 'green')))
     proj.analyze()
