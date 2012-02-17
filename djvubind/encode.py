@@ -35,7 +35,10 @@ class Encoder:
         self.opts = opts
 
         self.dep_check()
-
+    
+    def progress(self):
+      pass
+    
     def _c44(self, infile, outfile, dpi):
         """
         Encode files with c44.
@@ -218,12 +221,14 @@ class Encoder:
                     self._minidjvu(bitonals, tempfile, book.dpi)
                     self.djvu_insert(tempfile, outfile)
                     os.remove(tempfile)
+                    self.progress()
         elif self.opts['bitonal_encoder'] == 'cjb2':
             for page in book.pages:
                 if page.bitonal:
                     self._cjb2(page.path, tempfile, page.dpi)
                     self.djvu_insert(tempfile, outfile)
                     os.remove(tempfile)
+                    self.progress()
         else:
             for page in book.pages:
                 if not page.bitonal:
@@ -240,6 +245,7 @@ class Encoder:
                     self._csepdjvu(page.path, tempfile, page.dpi)
                     self.djvu_insert(tempfile, outfile, page_number)
                     os.remove(tempfile)
+                    self.progress()
         elif self.opts['color_encoder'] == 'c44':
             for page in book.pages:
                 if not page.bitonal:
@@ -247,6 +253,7 @@ class Encoder:
                     self._c44(page.path, tempfile, page.dpi)
                     self.djvu_insert(tempfile, outfile, page_number)
                     os.remove(tempfile)
+                    self.progress()
         elif self.opts['color_encoder'] == 'cpaldjvu':
             for page in book.pages:
                 if not page.bitonal:
@@ -254,6 +261,7 @@ class Encoder:
                     self._cpaldjvu(page.path, tempfile, page.dpi)
                     self.djvu_insert(tempfile, outfile, page_number)
                     os.remove(tempfile)
+                    self.progress()
         else:
             for page in book.pages:
                 if not page.bitonal:
