@@ -304,7 +304,7 @@ class Project:
 
 if __name__ == '__main__':
     version  = '1.1.0'
-    version += '\n$Revision: a6f5b26455a0 $'.replace('$', '')
+    version += '\n$Revision: 8432382bf70c $'.replace('$', '')
 
     # Command line parsing
     usage = "usage: %prog [options] directory"
@@ -395,6 +395,30 @@ if __name__ == '__main__':
                     proj.book.pages[-1].title = next(counter)
                     if proj.opts['title_uppercase']:
                         proj.book.pages[-1].title = proj.book.pages[-1].title.upper()
+
+    # Check that titles are not being specified without a starting page
+    if (proj.opts['title_start'] is False) and (proj.opts['title_exclude'] != []):
+        msg = 'err: --title-exclude may only be used with --title-start.'
+        msg = djvubind.utils.color(msg, 'red')
+        print(msg, file=sys.stderr)
+        sys.exit(1)
+
+    # Check for duplicate titles
+    titles = {}
+    for key in proj.book.pages:
+        value = key.title
+        if value in titles and value is not None:
+            titles[value] += 1
+        else:
+            titles[value] = 1
+    dups = [key for key in titles if titles[key]>1]
+    if len(dups):
+        msg = 'err: The same title cannot be used for multiple pages. This is a limitation of djvused. Duplicated titles are listed below:'
+        msg = djvubind.utils.color(msg, 'red')
+        print(msg, file=sys.stderr)
+        for dup in dups:
+            print(dup, file=sys.stderr)
+            sys.exit(1)
 
     if len(proj.book.pages) == 0:
         print('  No files found to bind.')
