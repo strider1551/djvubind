@@ -304,7 +304,7 @@ class Project:
 
 if __name__ == '__main__':
     version  = '1.1.0'
-    version += '\n$Revision: 8432382bf70c $'.replace('$', '')
+    version += '\n$Revision: ddc6ff8e1eb6 $'.replace('$', '')
 
     # Command line parsing
     usage = "usage: %prog [options] directory"
@@ -397,7 +397,7 @@ if __name__ == '__main__':
                         proj.book.pages[-1].title = proj.book.pages[-1].title.upper()
 
     # Check that titles are not being specified without a starting page
-    if (proj.opts['title_start'] is False) and (proj.opts['title_exclude'] != []):
+    if (proj.opts['title_start'] is False) and (proj.opts['title_exclude'] != {}):
         msg = 'err: --title-exclude may only be used with --title-start.'
         msg = djvubind.utils.color(msg, 'red')
         print(msg, file=sys.stderr)
