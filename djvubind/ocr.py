@@ -399,10 +399,18 @@ class Tesseract(object):
         else:
             boxfilename = basename + '_box.box'
 
-        with open(boxfilename, 'r', encoding='utf8') as handle:
-            boxfile = handle.read()
-        with open(basename+'_txt.txt', 'r', encoding='utf8') as handle:
-            text = handle.read()
+        try:
+            with open(boxfilename, 'r', encoding='utf8') as handle:
+                boxfile = handle.read()
+            with open(basename+'_txt.txt', 'r', encoding='utf8') as handle:
+                text = handle.read()
+        except:
+            msg = 'wrn: Could not read OCR data for {0} (probably a blank page). This page will have no OCR content.'.format(basename)
+            msg = utils.color(msg, 'red')
+            print(msg, file=sys.stderr)
+            os.remove(boxfilename)
+            os.remove(basename+'_txt.txt')
+            return []
 
         os.remove(boxfilename)
         os.remove(basename+'_txt.txt')
