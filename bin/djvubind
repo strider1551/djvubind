@@ -303,8 +303,8 @@ class Project:
 
 
 if __name__ == '__main__':
-    version  = '1.1.0'
-    version += '\n$Revision: ddc6ff8e1eb6 $'.replace('$', '')
+    version  = '1.2.0'
+    version += ' ( $Revision: d03f2f4d0503 $)'.replace('$', '')
 
     # Command line parsing
     usage = "usage: %prog [options] directory"
