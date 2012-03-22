@@ -18,6 +18,7 @@ Common and simple functions that are used throughout everything else.
 """
 
 
+import multiprocessing
 import os
 import subprocess
 import sys
@@ -287,25 +288,10 @@ def cpu_count():
     """
     Returns the number of CPU cores (both virtual an pyhsical) in the system.
     """
-    num = 0
 
-    if sys.platform.startswith('win'):
-        try:
-            num = int(os.environ['NUMBER_OF_PROCESSORS'])
-        except (ValueError, KeyError):
-            pass
-    elif sys.platform == 'darwin':
-        try:
-            num = int(os.popen('sysctl -n hw.ncpu').read())
-        except ValueError:
-            pass
-    else:
-        try:
-            num = os.sysconf('SC_NPROCESSORS_ONLN')
-        except (ValueError, OSError, AttributeError):
-            pass
+    try:
+        cpus = multiprocessing.cpu_count()
+    except (NotImplementedError):
+        cpus = 1
 
-    if num >= 1:
-        return num
-    else:
-        return 1
+    return cpus
