@@ -117,6 +117,10 @@ class djvuLineBox(BoundingBox):
         BoundingBox.__init__(self)
 
     def encode(self):
+        # This is a hackish solution for when a line happens to be blank (only cuneiform hocr?).
+        # Something here with BoundingBox needs to be thought through better.
+        if (self.perimeter['xmin'] == 1000000000) and (self.perimeter['ymin'] == 1000000000):
+            return ''
         self.sanity_check()
         line = '(line {0} {1} {2} {3}'.format(self.perimeter['xmin'], self.perimeter['ymin'], self.perimeter['xmax'], self.perimeter['ymax'])
         words = '\n    '.join([x.encode() for x in self.children])

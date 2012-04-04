@@ -70,8 +70,6 @@ class ThreadOCR(threading.Thread):
             try:
                 # Process the page
                 page = self.queue.get()
-                #boxing = self.ocr.analyze_image(page.path)
-                #page.text = self.ocr.translate(boxing)
                 boxing = self.ocr.analyze(page.path)
                 page.text = djvubind.ocr.translate(boxing)
             except queue.Empty:
@@ -290,7 +288,7 @@ class Project:
             try:
                 time.sleep(3)
                 # Report completion percentage.
-                # N.b., this is perfect, since queue.qsize() isn't completely reliable in a threaded
+                # N.b., this is not perfect, since queue.qsize() isn't completely reliable in a threaded
                 # environment, but it will do well enough to give the user and idea of where we are.
                 position = ( (pagecount - q.qsize() - self.opts['cores']) / pagecount ) * 100
                 print('  {0:.2f}% completed.       '.format(position), end='\r')
@@ -304,7 +302,7 @@ class Project:
 
 if __name__ == '__main__':
     version  = '1.2.0'
-    version += ' ( $Revision: d03f2f4d0503 $)'.replace('$', '')
+    version += ' ( $Revision: cd0c8d20d15d $)'.replace('$', '')
 
     # Command line parsing
     usage = "usage: %prog [options] directory"
