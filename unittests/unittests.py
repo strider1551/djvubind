@@ -29,11 +29,14 @@ sys.path.insert(0, os.path.dirname(loc))
 import djvubind.ocr
 import djvubind.utils
 
+# Move into the directory of the unittests
+os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
 class Ocr(unittest.TestCase):
     """
     Tests for djvubind/ocr.py
     """
+
 
     def test_01_impossible_bounding_box(self):
         box = djvubind.ocr.BoundingBox()

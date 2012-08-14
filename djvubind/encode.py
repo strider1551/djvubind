@@ -35,10 +35,10 @@ class Encoder:
         self.opts = opts
 
         self.dep_check()
-    
+
     def progress(self):
       pass
-    
+
     def _c44(self, infile, outfile, dpi):
         """
         Encode files with c44.
@@ -115,8 +115,10 @@ class Encoder:
         """
 
         # Separate the bitonal text (scantailor's mixed mode) from everything else.
-        utils.execute('convert -opaque black "{0}" "temp_graphics.tif"'.format(infile))
-        utils.execute('convert +opaque black "{0}" "temp_textual.tif"'.format(infile))
+        #utils.execute('convert -opaque black "{0}" "temp_graphics.tif"'.format(infile))
+        #utils.execute('convert +opaque black "{0}" "temp_textual.tif"'.format(infile))
+        utils.execute('convert "{0}" -opaque black "temp_graphics.tif"'.format(infile))
+        utils.execute('convert "{0}" +opaque black -monochrome "temp_textual.tif"'.format(infile))
 
         # Encode the bitonal image.
         self._cjb2('temp_textual.tif', 'enc_bitonal_out.djvu', dpi)
