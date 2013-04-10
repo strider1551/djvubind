@@ -165,6 +165,7 @@ def simple_exec(cmd):
     Execute a simple command.  Any output disregarded and exit status is
     returned.
     """
+    #print(cmd)
 
     cmd = separate_cmd(cmd)
     with open(os.devnull, 'w') as void:
@@ -176,6 +177,7 @@ def execute(cmd, capture=False):
     Execute a command line process.  Includes the option of capturing output,
     and checks for successful execution.
     """
+    #print(cmd)
 
     with open(os.devnull, 'w') as void:
         if capture:

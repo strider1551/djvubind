@@ -394,29 +394,20 @@ class Tesseract(object):
         basename = os.path.split(filename)[1].split('.')[0]
         tesseractpath = utils.get_executable_path('tesseract')
 
-        utils.execute('{0} "{1}" "{2}_box" {3} batch makebox'.format(tesseractpath, filename, basename, self.options))
-        utils.execute('{0} "{1}" "{2}_txt" {3} batch'.format(tesseractpath, filename, basename, self.options))
-
         # tesseract-3.00 changed the .txt extension to .box so check which file was created.
         if os.path.exists(basename + '_box.txt'):
             boxfilename = basename + '_box.txt'
         else:
             boxfilename = basename + '_box.box'
 
-        try:
-            with open(boxfilename, 'r', encoding='utf8') as handle:
+        utils.execute('{0} "{1}" "{2}_box" {3} batch makebox'.format(tesseractpath, filename, basename, self.options))
+        with open(boxfilename, 'r', encoding='utf8') as handle:
                 boxfile = handle.read()
-            with open(basename+'_txt.txt', 'r', encoding='utf8') as handle:
-                text = handle.read()
-        except:
-            msg = 'wrn: Could not read OCR data for {0} (probably a blank page). This page will have no OCR content.'.format(basename)
-            msg = utils.color(msg, 'red')
-            print(msg, file=sys.stderr)
-            os.remove(boxfilename)
-            os.remove(basename+'_txt.txt')
-            return []
-
         os.remove(boxfilename)
+
+        utils.execute('{0} "{1}" "{2}_txt" {3} batch'.format(tesseractpath, filename, basename, self.options))
+        with open(basename+'_txt.txt', 'r', encoding='utf8') as handle:
+            text = handle.read()
         os.remove(basename+'_txt.txt')
 
         data = []

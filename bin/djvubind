@@ -54,6 +54,11 @@ class ThreadAnalyze(threading.Thread):
                 page.get_dpi()
             except queue.Empty:
                 self.quit = True
+            except:
+                msg = 'wrn: Analysis failure on {0}.'.format(os.path.split(page.path)[1])
+                msg = djvubind.utils.color(msg, 'red')
+                print(msg, file=sys.stderr)
+                sys.exit(1)
             finally:
                 self.queue.task_done()
 
@@ -74,6 +79,10 @@ class ThreadOCR(threading.Thread):
                 page.text = djvubind.ocr.translate(boxing)
             except queue.Empty:
                 self.quit = True
+            except:
+                msg = 'wrn: OCR failure on {0} - This page will have no OCR content.'.format(os.path.split(page.path)[1])
+                msg = djvubind.utils.color(msg, 'red')
+                print(msg, file=sys.stderr)
             finally:
                 self.queue.task_done()
 
@@ -302,7 +311,7 @@ class Project:
 
 if __name__ == '__main__':
     version  = '1.2.0'
-    version += ' ( $Revision: cd0c8d20d15d $)'.replace('$', '')
+    version += ' ( $Revision: 6202f80e0e98 $)'.replace('$', '')
 
     # Command line parsing
     usage = "usage: %prog [options] directory"
@@ -433,3 +442,4 @@ if __name__ == '__main__':
 
     print('{0} Encoding all information to {1}.'.format(djvubind.utils.color('*', 'green'), proj.out))
     proj.bind()
+
