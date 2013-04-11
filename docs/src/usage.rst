@@ -8,10 +8,7 @@ A full listing of options can be found with ``djvubind --help``. Additional info
 
 Project Files
 -------------
-Djvubind expects to either be run from the directory containing all of your image files, or to be passed that directory as an argument. The images must have an extension of .tif or .tiff. They will be added to the file in a sorted order.
-
-.. note::
-    Support for the Netpbm format (.pnm, .pbm, .pgm, .ppm) is `a planned feature <https://code.google.com/p/djvubind/issues/detail?id=31&colspec=ID%20Type%20Status%20Priority%20Milestone%20Reporter%20Summary>`_ for the future. At this point, djvubind **will** process files with the .pnm and .pbm extensions, but no promises that it will work! If you do use those extensions and encounter a problem, please report it.
+Djvubind expects to either be run from the directory containing all of your image files, or to be passed that directory as an argument. The images must have one of the following extensions: .tif, .tiff, .pnm, .pbm, .pgm, or .ppm. They will be added to the file in a sorted order.
 
 Front/Back Covers
 ^^^^^^^^^^^^^^^^^
