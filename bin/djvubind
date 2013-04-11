@@ -311,7 +311,7 @@ class Project:
 
 if __name__ == '__main__':
     version  = '1.2.0'
-    version += ' ( $Revision: 6202f80e0e98 $)'.replace('$', '')
+    version += ' ( $Revision: 4e797677f1bc $)'.replace('$', '')
 
     # Command line parsing
     usage = "usage: %prog [options] directory"
@@ -390,7 +390,7 @@ if __name__ == '__main__':
     for filename in djvubind.utils.list_files():
         ext = filename.split('.')[-1]
         ext = ext.lower()
-        if (ext in ['tif', 'tiff', 'pnm', 'pbm']) and (filename not in [options.cover_front, options.cover_back]):
+        if (ext in ['tif', 'tiff', 'pnm', 'pbm', 'pgm', 'ppm']) and (filename not in [options.cover_front, options.cover_back]):
             proj.add_file(filename, 'page')
             if proj.opts['title_start'] is not False:
                 filename = os.path.basename(filename)
@@ -440,6 +440,9 @@ if __name__ == '__main__':
     print('{0} Performing optical character recognition.'.format(djvubind.utils.color('*', 'green')))
     proj.get_ocr()
 
+    #proj.book.save_report()
+
     print('{0} Encoding all information to {1}.'.format(djvubind.utils.color('*', 'green'), proj.out))
     proj.bind()
+
 

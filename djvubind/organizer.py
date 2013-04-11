@@ -43,9 +43,9 @@ class Book:
 
         for page in self.pages:
             if (self.dpi is not None) and (page.dpi != self.dpi):
-                print("wrn: {0}".format(page.path))
-                print("wrn: organizer.Book.analyze(): Page dpi is different from the previous page.", file=sys.stderr)
-                print("wrn: organizer.Book.analyze(): If you encounter problems with minidjvu, this is probably why.", file=sys.stderr)
+                print("msg: [organizer.Book.analyze()] {0}".format(page.path))
+                print("     Page dpi is different from the previous page.", file=sys.stderr)
+                print("     If you encounter problems with minidjvu, this is probably why.", file=sys.stderr)
             self.dpi = page.dpi
 
         return None
@@ -56,6 +56,21 @@ class Book:
         """
 
         self.pages.append(Page(path))
+        return None
+
+    def save_report(self):
+        """
+        Saves a diagnostic report of the book in csv format.
+        """
+
+        with open('book.csv', 'w', encoding='utf8') as handle:
+            handle.write('Path, Bitonal, DPI, Title, OCR\n')
+            for page in self.pages:
+                entry = [page.path, str(page.bitonal), str(page.dpi), str(page.title), str(len(page.text))]
+                entry = ", ".join(entry)
+                handle.write(entry)
+                handle.write('\n')
+
         return None
 
 class Page:
@@ -85,11 +100,15 @@ class Page:
         Check if the image is bitonal.
         """
 
-        if utils.execute('identify -ping "{0}"'.format(self.path), capture=True).decode('utf8').find('Bilevel') == -1:
+        if utils.execute('identify -ping "{0}"'.format(self.path), capture=True).decode('utf8').find('1-bit') == -1:
             self.bitonal = False
         else:
             if (utils.execute('identify -ping -format %z "{0}"'.format(self.path), capture=True).decode('utf8') != ('1' + os.linesep)):
                 print("msg: {0}: Bitonal image but with a depth greater than 1.  Modifying image depth.".format(os.path.split(self.path)[1]))
-                utils.execute('mogrify -colors 2 "{0}"'.format(self.path))
+                utils.execute('mogrify -colorspace gray -depth 1 "{0}"'.format(self.path))
             self.bitonal = True
+
+        if (self.path[-4:].lower() == '.pgm') and (self.bitonal is True):
+            msg = utils.color("wrn: {0}: Bitonal image but using a PGM format instead of PBM. Tesseract might get mad!".format(os.path.split(self.path)[1]), 'red')
+            print(msg, file=sys.stderr)
         return None

@@ -104,6 +104,7 @@ def split_cmd(start, files, end=''):
     [1] http://stackoverflow.com/questions/2381241/what-is-the-subprocess-popen-max-length-of-the-args-parameter
     [2] http://www.linuxjournal.com/article/6060
     """
+    #print(cmd)
 
     cmds = []
     start = start + ' '
@@ -127,6 +128,7 @@ def separate_cmd(cmd):
     Convert a subprocess command string into a list, intelligently handling arguments
     enclosed in single or double quotes.
     """
+    #print(cmd)
 
     cmd = list(cmd)
     buffer = ''
@@ -188,7 +190,8 @@ def execute(cmd, capture=False):
 
     # Exit if the command fails for any reason.
     if status != 0:
-        print('err: utils.execute(): command exited with bad status.\ncmd = {0}\nexit status = {1}'.format(cmd, status), file=sys.stderr)
+        print(utils.color("err: [utils.execute()] Command exited with bad status.", 'red'), file=sys.stderr)
+        print('     cmd = {0}\n     exit status = {1}'.format(cmd, status), file=sys.stderr)
         sys.exit(1)
 
     if capture:

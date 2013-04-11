@@ -71,14 +71,27 @@ class Encoder:
         Encode files with cjb2.
         """
 
+        # Make sure that the image is in a format acceptable for cjb2
+        extension = infile.split('.')[-1].lower()
+        if extension not in ['tif','tiff','pbm','pgm','pnm','rle']:
+            print("msg: {0}".format(infile), file=sys.stderr)
+            print("     This is a bitonal image, but is not in a format accepted by cjb2.", file=sys.stderr)
+            print("     Copying to PBM format to be compatible - this may produce a large temporary file!", file=sys.stderr)
+            utils.execute('convert {0} {1}'.format(infile, 'temp.pbm'))
+            infile = 'temp.pbm'
+
         cmd = 'cjb2 -dpi {0} {1} "{2}" "{3}"'.format(dpi, self.opts['cjb2_options'], infile, outfile)
         utils.execute(cmd)
 
         # Check that the outfile has been created.
         if not os.path.isfile(outfile):
-            msg = 'err: encode.Encoder._cpaldjvu(): No encode errors, but "{0}" does not exist!'.format(outfile)
+            msg = 'err: encode.Encoder._cjb2(): No encode errors, but "{0}" does not exist!'.format(outfile)
             print(msg, file=sys.stderr)
             sys.exit(1)
+
+        # Cleanup
+        if (infile == 'temp.pbm') and (os.path.isfile('temp.pbm')):
+            os.remove('temp.pbm')
 
         return None
 
@@ -162,6 +175,25 @@ class Encoder:
         # Specify filenames that will be used.
         tempfile = 'enc_temp.djvu'
 
+        temp_files = []
+        for filename in infiles:
+            extension = filename.split('.')[-1].lower()
+            if extension not in ['tif','tiff','pbm','pnm']:
+                temp_files.append(filename+'.pbm')
+        if len(temp_files) != 0:
+            print("msg: Files were found that are bitonal but in formats not accepted by minidjvu. They will be listed below.", file=sys.stderr)
+            print("     Copying to PBM format to be compatible - this may produce a large temporary file or files!", file=sys.stderr)
+            for replacement in temp_files:
+                print("     {0}".format(replacement[:-4]), file=sys.stderr)
+                #utils.execute('convert {0} {1}'.format(replacement[:-4], replacement))
+                #index = infiles.index(replacement[:-4])
+                #infiles.remove(replacement[:-4])
+                #infiles.insert(index, replacement)
+            msg = utils.color("!!!: Automatic conversion of minidjvu files is disabled, because the above list could be *very* long and PBM files are not small.", "red")
+            print(msg, file=sys.stderr)
+            print("     minidjvu will accept PBM, PNM, and TIF files. Convert by hand before proceeding.", file=sys.stderr)
+            sys.exit(1)
+
         # Minidjvu has to worry about the length of the command since all the filenames are
         # listed.
         cmds = utils.split_cmd('minidjvu -d {0} {1}'.format(dpi, self.opts['minidjvu_options']), infiles, tempfile)
@@ -172,6 +204,8 @@ class Encoder:
             self.djvu_insert(tempfile, outfile)
 
         os.remove(tempfile)
+        for replacement in temp_files:
+            os.remove(replacement)
 
         return None
 
