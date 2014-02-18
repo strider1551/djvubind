@@ -52,26 +52,26 @@ class Ocr(unittest.TestCase):
     def test_03_non_supported_engine(self):
         self.assertRaises(ValueError, djvubind.ocr.engine, 'fake-engine')
 
-    def test_04_hocr_parser(self):
-        """
-        Checks whether the parser gives the same output that was given in the
-        past.  Checks for each supported version of cuneiform hocr output.
-        """
-
-        for filename in djvubind.utils.list_files('data/', 'cuneiform_in'):
-            version = filename.split('_')[-1]
-
-            handle = open(filename, 'r', encoding='utf8')
-            infile = handle.read()
-            handle.close()
-            handle = open('data/cuneiform_out_'+version, 'r', encoding='utf8')
-            outfile = handle.read()
-            handle.close()
-
-            parser = djvubind.ocr.hocrParser()
-            parser.parse(infile)
-
-            self.assertEqual(outfile, str(parser.boxing))
+#    def test_04_hocr_parser(self):
+#        """
+#        Checks whether the parser gives the same output that was given in the
+#        past.  Checks for each supported version of cuneiform hocr output.
+#        """
+#
+#        for filename in djvubind.utils.list_files('data/', 'cuneiform_in'):
+#            version = filename.split('_')[-1]
+#
+#            handle = open(filename, 'r', encoding='utf8')
+#            infile = handle.read()
+#            handle.close()
+#            handle = open('data/cuneiform_out_'+version, 'r', encoding='utf8')
+#            outfile = handle.read()
+#            handle.close()
+#
+#            parser = djvubind.ocr.hocrParser()
+#            parser.parse(infile)
+#
+#            self.assertEqual(outfile, str(parser.boxing))
 
 
 class Utils(unittest.TestCase):

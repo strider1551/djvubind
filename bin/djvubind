@@ -194,6 +194,7 @@ class Project:
                      'csepdjvu_options':'',
                      'minidjvu_options':'--match -pages-per-dict 100',
                      'title_start':False,
+                     'title_start_number':1,
                      'title_exclude':{},
                      'title_uppercase':False,
                      'win_path':'C:\\Program Files\\DjVuZone\\DjVuLibre\\'}
@@ -243,6 +244,8 @@ class Project:
             self.opts['cuneiform_options'] = opts.cuneiform_options
         if opts.title_start:
             self.opts['title_start'] = opts.title_start
+        if opts.title_start_number:
+            self.opts['title_start_number'] = opts.title_start_number
         for special in opts.title_exclude:
             if ':' in special:
                 special = special.split(':')
@@ -312,7 +315,7 @@ class Project:
 
 if __name__ == '__main__':
     version  = '1.2.1'
-    version += ' ( $Revision: 9f96378cc790 $)'.replace('$', '')
+    version += ' ( $Revision: 9d9c575c2bf9 $)'.replace('$', '')
 
     # Command line parsing
     usage = "usage: %prog [options] directory"
@@ -322,7 +325,7 @@ if __name__ == '__main__':
                         no_ocr=False, ocr_engine=None, tesseract_options=None, cuneiform_options=None,
                         cover_front='cover_front.jpg', cover_back='cover_back.jpg',
                         metadata='metadata', bookmarks='bookmarks',
-                        title_start=False, title_exclude=[], title_uppercase=False)
+                        title_start=False, title_start_number=1, title_exclude=[], title_uppercase=False)
     parser.add_option("--cover-front", dest="cover_front", help="Specifies an alternate front cover image.  By default, '%default' is used if present.")
     parser.add_option("--cover-back", dest="cover_back", help="Specifies an alternate back cover image.  By default, '%default' is used if present.")
     parser.add_option("--metadata", dest="metadata", help="Specifies an alternate metadata file.  By default, '%default' is used if present.")
@@ -332,6 +335,7 @@ if __name__ == '__main__':
     parser.add_option("--tesseract-options", dest="tesseract_options", help="Additional command line options to pass to tesseract.")
     parser.add_option("--cuneiform-options", dest="cuneiform_options", help="Additional command line options to pass to cuneiform.")
     parser.add_option("--title-start", dest="title_start", help="The image filename that is page 1.  Pages before this will titled with roman numerals.")
+    parser.add_option("--title-start-number", dest="title_start_number", help="The number for the first page in arabic numerals.")
     parser.add_option("--title-exclude", action="append", dest="title_exclude", help="An image that should be excluded from page numbering.  An alternate title can be provided after a colon (e.g. page_01.tif:cover).")
     parser.add_option("--title-uppercase", action="store_true", dest="title_uppercase", help="Use uppercase roman numerals instead of lowercase.")
     parser.add_option("-q", "--quiet", action="store_true", dest="quiet")
@@ -396,7 +400,7 @@ if __name__ == '__main__':
             if proj.opts['title_start'] is not False:
                 filename = os.path.basename(filename)
                 if proj.opts['title_start'] == filename:
-                    counter = djvubind.utils.counter(start=1)
+                    counter = djvubind.utils.counter(start=int(proj.opts['title_start_number']))
                 if filename in proj.opts['title_exclude']:
                     proj.book.pages[-1].title = proj.opts['title_exclude'][filename]
                 else:
