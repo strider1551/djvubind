@@ -1,0 +1,10 @@
+docs/src/*
+releases/*
+test/*
+
+*.pyc
+
+docs/manual.pdf
+.hgignore
+build.sh
+
