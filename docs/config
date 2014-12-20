@@ -34,10 +34,10 @@ color_encoder = csepdjvu
 # N.b., options to specify the image's dpi (normally -d or --dpi) are calculated
 # by djvubind, so don't bother setting that.
 c44_options =
-cjb2_options = -lossy
+cjb2_options = -lossless
 cpaldjvu_options =
 csepdjvu_options =
-minidjvu_options = --match --pages-per-dict 100
+minidjvu_options = --lossy --pages-per-dict 100
 
 # Windows related options.
 # Unless you have made changes to the system PATH, djvubind might not be able
