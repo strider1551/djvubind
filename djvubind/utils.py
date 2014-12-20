@@ -190,7 +190,7 @@ def execute(cmd, capture=False):
 
     # Exit if the command fails for any reason.
     if status != 0:
-        print(utils.color("err: [utils.execute()] Command exited with bad status.", 'red'), file=sys.stderr)
+        print(color("err: [utils.execute()] Command exited with bad status.", 'red'), file=sys.stderr)
         print('     cmd = {0}\n     exit status = {1}'.format(cmd, status), file=sys.stderr)
         sys.exit(1)
 
