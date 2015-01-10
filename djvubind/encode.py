@@ -81,6 +81,16 @@ class Encoder:
             infile = 'temp.pbm'
 
         cmd = 'cjb2 -dpi {0} {1} "{2}" "{3}"'.format(dpi, self.opts['cjb2_options'], infile, outfile)
+
+        # cjb2 will not process images if dpi is greater than 1200 or less than 25, and will exit.
+        # If -dpi is simply not specified it will process the image.
+        # This limitation apparently has to do with some of their algorithms to despeckle and whatenot.
+        if (dpi <= 25) or (dpi >= 1200):
+            msg = 'wrn: encode.Encoder._cjb2(): cjb2 only accepts specified dpi values from 25 to 1200. Omitting dpi for {0}'.format(infile)
+            msg = utils.color(msg, 'red')
+            print(msg, file=sys.stderr)
+            cmd = cmd.replace('-dpi {0} '.format(dpi), '')
+
         utils.execute(cmd)
 
         # Check that the outfile has been created.
