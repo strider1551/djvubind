@@ -172,7 +172,9 @@ def simple_exec(cmd):
     cmd = separate_cmd(cmd)
     with open(os.devnull, 'w') as void:
         sub = subprocess.Popen(cmd, shell=False, stdout=void, stderr=void)
-        return int(sub.wait())
+        status = int(sub.wait())
+
+    return status
 
 def execute(cmd, capture=False):
     """
