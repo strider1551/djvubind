@@ -133,21 +133,26 @@ class Project:
         Retrieve and store information about each image (dpi, bitonal, etc.).
         """
 
+        pagecount = len(self.book.pages)
+        threadcount = self.opts['cores']
+
+        if threadcount > pagecount:
+            threadcount = pagecount
+
         # Create queu and populate with pages to process
         q = queue.Queue()
         for i in self.book.pages:
             q.put(i)
 
         # Create threads to process the pages in queue
-        print('  Spawning {0} processing threads.'.format(self.opts['cores']))
-        for i in range(self.opts['cores']):
+        print('  Spawning {0} processing threads.'.format(threadcount))
+        for i in range(threadcount):
             p = ThreadAnalyze(q)
             p.daemon = True
             p.start()
 
         # Wait for everything to digest.  Note that we don't simply call q.join()
         # because it blocks, preventing something like ctrl-c from killing the program.
-        pagecount = len(self.book.pages)
         while not q.empty():
             try:
                 time.sleep(3)
@@ -281,14 +286,20 @@ class Project:
             print('  OCR is disabled and will be skipped.')
             return None
 
+        pagecount = len(self.book.pages)
+        threadcount = self.opts['cores']
+
+        if threadcount > pagecount:
+            threadcount = pagecount
+
         # Create queu and populate with pages to process
         q = queue.Queue()
         for i in self.book.pages:
             q.put(i)
 
         # Create threads to process the pages in queue
-        print('  Spawning {0} processing threads.'.format(self.opts['cores']))
-        for i in range(self.opts['cores']):
+        print('  Spawning {0} processing threads.'.format(threadcount))
+        for i in range(threadcount):
             p = ThreadOCR(q, self.ocr)
             p.daemon = True
             p.start()
@@ -296,7 +307,6 @@ class Project:
         # Wait for everything to digest.  Note that we don't simply call q.join()
         # because it blocks, preventing something like ctrl-c from killing the
         # program.
-        pagecount = len(self.book.pages)
         while not q.empty():
             try:
                 time.sleep(3)
