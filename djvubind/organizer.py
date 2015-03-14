@@ -103,7 +103,8 @@ class Page:
         if utils.execute('identify -ping "{0}"'.format(self.path), capture=True).decode('utf8').find('1-bit') == -1:
             self.bitonal = False
         else:
-            if (utils.execute('identify -ping -format %z "{0}"'.format(self.path), capture=True).decode('utf8') != ('1' + os.linesep)):
+            if int(utils.execute('identify -ping -format %z "{0}"'.format(
+                    self.path), capture=True).decode('utf8')) != 1:
                 print("msg: {0}: Bitonal image but with a depth greater than 1.  Modifying image depth.".format(os.path.split(self.path)[1]))
                 utils.execute('mogrify -colorspace gray -depth 1 "{0}"'.format(self.path))
             self.bitonal = True
