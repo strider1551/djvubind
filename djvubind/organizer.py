@@ -90,10 +90,15 @@ class Page:
         """
         Find the resolution of the image.
         """
-
-        dpi = utils.execute('identify -ping -format %x "{0}"'.format(self.path), capture=True).decode('ascii').split(' ')[0]
-        self.dpi = int(dpi)
-        return None
+        resolution = utils.execute('identify -ping -format %x "{0}"'.format(
+            self.path), capture=True).decode('ascii').split(' ')
+        if resolution[1] == 'PixelsPerInch':
+            self.dpi = int(resolution[0])
+        elif resolution[1] == 'PixelsPerCentimeter':
+            self.dpi = round(float(resolution[0]) * 2.54)
+        else:
+            raise ValueError(
+                'Unknown image resolution unit "{0}"'.format(resolution[1]))
 
     def is_bitonal(self):
         """
