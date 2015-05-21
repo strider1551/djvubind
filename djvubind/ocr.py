@@ -29,7 +29,6 @@ from html.parser import HTMLParser
 
 from . import utils
 
-
 class BoundingBox(object):
     """
     A rectangular portion of an image that contains something of value, such as
@@ -438,15 +437,20 @@ class Tesseract(object):
 
         if self.version >= 3:
             basename = os.path.split(filename)[1].split('.')[0]
+            # It's important that the basename have a random string appended to
+            # it, otherwise a directory with both 01.tif and 01.ppm is going
+            # to have some (un)predictable problems.
+            basename += "_" + utils.id_generator()
             tesseractpath = utils.get_executable_path('tesseract')
 
-            utils.execute('{0} "{1}" "{2}" {3} hocr'.format(tesseractpath, filename, basename, self.options))
+            cmd = '{0} "{1}" "{2}" {3} hocr'.format(tesseractpath, filename, basename, self.options)
+            utils.execute(cmd)
 
             with open('{0}.hocr'.format(basename), 'r') as handle:
                 text = handle.read()
 
             # Clean up excess files.
-            #os.remove(basename+'.hocr')
+            os.remove(basename+'.hocr')
 
             parser = hocrParser()
             parser.parse(text)
@@ -463,6 +467,10 @@ class Tesseract(object):
             return parser.boxing
         else:
             basename = os.path.split(filename)[1].split('.')[0]
+            # It's important that the basename have a random string appended to
+            # it, otherwise a directory with both 01.tif and 01.ppm is going
+            # to have some (un)predictable problems.
+            basename += "_" + utils.id_generator()
             tesseractpath = utils.get_executable_path('tesseract')
 
             utils.execute('{0} "{1}" "{2}_box" {3} batch makebox'.format(tesseractpath, filename, basename, self.options))

@@ -20,14 +20,57 @@ Common and simple functions that are used throughout everything else.
 
 import multiprocessing
 import os
+import random
+import string
 import subprocess
 import sys
+
 
 roman_numeral_map = (('m',  1000), ('cm', 900), ('d',  500),
                      ('cd', 400), ('c',  100), ('xc', 90),
                      ('l',  50), ('xl', 40), ('x',  10),
                      ('ix', 9), ('v',  5), ('iv', 4), ('i',  1))
 html_codes = (['&', '&amp;'],['<', '&lt;'],['>', '&gt;'],['"', '&quot;'])
+
+
+class ChangeDirectory(object):
+    """
+    Context manager that makes a temporary change the working directory.
+    """
+
+    def __init__(self, directory):
+        self._dir = directory
+        self._cwd = os.getcwd()
+        self._pwd = self._cwd
+
+    @property
+    def current(self):
+        return self._cwd
+
+    @property
+    def previous(self):
+        return self._pwd
+
+    @property
+    def relative(self):
+        c = self._cwd.split(os.path.sep)
+        p = self._pwd.split(os.path.sep)
+        l = min(len(c), len(p))
+        i = 0
+        while i < l and c[i] == p[i]:
+            i += 1
+        return os.path.normpath(os.path.join(*(['.'] + (['..'] * (len(c) - i)) + p[i:])))
+
+    def __enter__(self):
+        self._pwd = self._cwd
+        os.chdir(self._dir)
+        self._cwd = os.getcwd()
+        return self
+
+    def __exit__(self, *args):
+        os.chdir(self._pwd)
+        self._cwd = self._pwd
+
 
 def arabic_to_roman(number):
     """
@@ -83,6 +126,14 @@ def counter(start=0, end=None, incriment=1, roman=False):
                 yield arabic_to_roman(current)
             else:
                 yield str(current)
+
+def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
+    """
+    Creates a random string of ascii numbers and digits. Useful for making
+    identifies for temporary files.
+    """
+
+    return ''.join(random.choice(chars) for _ in range(size))
 
 def replace_html_codes(text):
     """

@@ -19,6 +19,7 @@ import os
 import queue
 import shutil
 import sys
+import tempfile
 import threading
 import time
 
@@ -298,27 +299,31 @@ class Project:
             q.put(i)
 
         # Create threads to process the pages in queue
-        print('  Spawning {0} processing threads.'.format(threadcount))
-        for i in range(threadcount):
-            p = ThreadOCR(q, self.ocr)
-            p.daemon = True
-            p.start()
+        with tempfile.TemporaryDirectory() as tempdir, djvubind.utils.ChangeDirectory(tempdir):
+            origin = os.getcwd()
+            os.chdir(tempdir)
+            print('  Spawning {0} processing threads.'.format(threadcount))
+            for i in range(threadcount):
+                p = ThreadOCR(q, self.ocr)
+                p.daemon = True
+                p.start()
 
-        # Wait for everything to digest.  Note that we don't simply call q.join()
-        # because it blocks, preventing something like ctrl-c from killing the
-        # program.
-        while not q.empty():
-            try:
-                time.sleep(3)
-                # Report completion percentage.
-                # N.b., this is not perfect, since queue.qsize() isn't completely reliable in a threaded
-                # environment, but it will do well enough to give the user and idea of where we are.
-                position = ( (pagecount - q.qsize() - self.opts['cores']) / pagecount ) * 100
-                print('  {0:.2f}% completed.       '.format(position), end='\r')
-            except KeyboardInterrupt:
-                print('')
-                sys.exit(1)
-        q.join()
+            # Wait for everything to digest.  Note that we don't simply call q.join()
+            # because it blocks, preventing something like ctrl-c from killing the
+            # program.
+            while not q.empty():
+                try:
+                    time.sleep(3)
+                    # Report completion percentage.
+                    # N.b., this is not perfect, since queue.qsize() isn't completely reliable in a threaded
+                    # environment, but it will do well enough to give the user and idea of where we are.
+                    position = ( (pagecount - q.qsize() - self.opts['cores']) / pagecount ) * 100
+                    print('  {0:.2f}% completed.       '.format(position), end='\r')
+                except KeyboardInterrupt:
+                    print('')
+                    sys.exit(1)
+            q.join()
+
 
         return None
 
@@ -394,12 +399,16 @@ if __name__ == '__main__':
     print('{0} Collecting files to be processed.'.format(djvubind.utils.color('*', 'green')))
     counter = djvubind.utils.counter(start=1, roman=True)
     if os.path.isfile(options.cover_front):
+        options.cover_front = os.path.join(os.getcwd(), options.cover_front)
         proj.add_file(options.cover_front, 'cover_front')
     if os.path.isfile(options.cover_back):
+        options.cover_back = os.path.join(os.getcwd(), options.cover_back)
         proj.add_file(options.cover_back, 'cover_back')
     if os.path.isfile(options.metadata):
+        options.metadata = os.path.join(os.getcwd(), options.metadata)
         proj.add_file(options.metadata, 'metadata')
     if os.path.isfile(options.bookmarks):
+        options.bookmarks = os.path.join(os.getcwd(), options.bookmarks)
         proj.add_file(options.bookmarks, 'bookmarks')
     for filename in djvubind.utils.list_files():
         ext = filename.split('.')[-1]
