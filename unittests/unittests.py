@@ -19,6 +19,11 @@ import pickle
 import sys
 import unittest
 
+try:
+    from unittest import mock
+except ImportError:
+    import mock
+
 # Adjust the python path to use live code and not an installed version
 loc = os.path.realpath(__file__)
 loc = os.path.dirname(loc)
@@ -119,6 +124,50 @@ class Utils(unittest.TestCase):
         Checks that a TypeError is raised for non-integer arguments.
         """
         self.assertRaises(TypeError, djvubind.utils.arabic_to_roman, '5')
+
+    def test_05_counter(self):
+        """
+        Sanity check for utils.counter()
+        """
+
+        counter = djvubind.utils.counter(start=1, roman=True)
+        self.assertEqual(next(counter), "i")
+        self.assertEqual(next(counter), "ii")
+
+        counter = djvubind.utils.counter(start=1)
+        self.assertEqual(next(counter), "1")
+        self.assertEqual(next(counter), "2")
+
+        counter = djvubind.utils.counter(start=1, incriment=2)
+        self.assertEqual(next(counter), "1")
+        self.assertEqual(next(counter), "3")
+
+        counter = djvubind.utils.counter(start=1, end=3)
+        self.assertEqual(next(counter), "1")
+        self.assertEqual(next(counter), "2")
+        self.assertEqual(next(counter), "3")
+        with self.assertRaises(StopIteration):
+            next(counter)
+
+    def test_06_contents(self):
+        """
+        Sanity check for utils.list_files()
+        """
+
+        with mock.patch('os.listdir') as mocked_listdir, \
+             mock.patch('os.path.isfile') as mocked_isfile:
+            mocked_listdir.return_value = ['test.tif', 'test.jpg', 'test.sh', 'test', 'skip', 'skip.jpg']
+            mocked_isfile.return_value = True
+
+            tmp = djvubind.utils.list_files()
+            self.assertEqual(tmp, ['./skip', './skip.jpg', './test', './test.jpg', './test.sh', './test.tif'])
+            tmp = djvubind.utils.list_files(contains="test")
+            self.assertEqual(tmp, ['./test', './test.jpg', './test.sh', './test.tif'])
+            tmp = djvubind.utils.list_files(extension="tif")
+            self.assertEqual(tmp, ['./test.tif'])
+            tmp = djvubind.utils.list_files(contains="test", extension="jpg")
+            self.assertEqual(tmp, ['./test.jpg'])
+
 
 if __name__ == "__main__":
     unittest.main()

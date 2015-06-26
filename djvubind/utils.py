@@ -21,6 +21,7 @@ Common and simple functions that are used throughout everything else.
 import multiprocessing
 import os
 import random
+import shlex
 import string
 import subprocess
 import sys
@@ -59,7 +60,8 @@ class ChangeDirectory(object):
         i = 0
         while i < l and c[i] == p[i]:
             i += 1
-        return os.path.normpath(os.path.join(*(['.'] + (['..'] * (len(c) - i)) + p[i:])))
+        out = os.path.join(*(['.'] + (['..'] * (len(c) - i)) + p[i:]))
+        return os.path.normpath(out)
 
     def __enter__(self):
         self._pwd = self._cwd
@@ -111,21 +113,14 @@ def counter(start=0, end=None, incriment=1, roman=False):
     Basic generator that increases the return with each call.  The return is a string.
     """
 
-    current = start
-    if roman:
-        yield arabic_to_roman(current)
-    else:
-        yield str(current)
+    current = start - incriment
 
-    while True:
-        if (end is not None) and (current >= end):
-            return
+    while (end is None) or (current < end):
+        current = current + incriment
+        if roman:
+            yield arabic_to_roman(current)
         else:
-            current = current + incriment
-            if roman:
-                yield arabic_to_roman(current)
-            else:
-                yield str(current)
+            yield str(current)
 
 def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
     """
@@ -174,45 +169,6 @@ def split_cmd(start, files, end=''):
 
     return cmds
 
-def separate_cmd(cmd):
-    """
-    Convert a subprocess command string into a list, intelligently handling arguments
-    enclosed in single or double quotes.
-    """
-    #print(cmd)
-
-    cmd = list(cmd)
-    buffer = ''
-    out = []
-    switch = [False, '']
-
-    for x in range(len(cmd)):
-        char = cmd[x]
-        if char == ' ' and not switch[0]:
-            out.append(buffer)
-            buffer = ''
-        # Be wary of a single/double quote that is part of a filename and not part of an
-        # enclosing pair
-        elif (char == '"' or char == "'") and not switch[0]:
-            if (char in cmd[x+1:]) and (buffer == ''):
-                switch[0] = True
-                switch[1] = char
-            else:
-                buffer = buffer + char
-        elif char == switch[1] and switch[0]:
-            out.append(buffer)
-            buffer = ''
-            switch[0] = False
-        else:
-            buffer = buffer + char
-    out.append(buffer)
-
-    # Just in case there were multiple spaces.
-    while '' in out:
-        out.remove('')
-
-    return out
-
 def simple_exec(cmd):
     """
     Execute a simple command.  Any output disregarded and exit status is
@@ -220,7 +176,7 @@ def simple_exec(cmd):
     """
     #print(cmd)
 
-    cmd = separate_cmd(cmd)
+    cmd = shlex.split(cmd)
     with open(os.devnull, 'w') as void:
         sub = subprocess.Popen(cmd, shell=False, stdout=void, stderr=void)
         status = int(sub.wait())
@@ -255,30 +211,16 @@ def execute(cmd, capture=False):
 
 def list_files(directory='.', contains=None, extension=None):
     """Find all files in a given directory that match criteria."""
-    tmp = os.listdir(directory)
+
     contents = []
-    for path in tmp:
+    for path in os.listdir(directory):
         path = os.path.join(directory, path)
-        if os.path.isfile(path):
-            contents.append(path)
+        if (contains is not None) and (contains not in path):
+            continue
+        if (extension is not None) and (not path.endswith(extension)):
+            continue
+        contents.append(path)
     contents.sort()
-
-    if contains is not None:
-        remove = []
-        for file in contents:
-            if contains not in file:
-                remove.append(file)
-        for file in remove:
-            contents.remove(file)
-
-    if extension is not None:
-        remove = []
-        for file in contents:
-            ext = file.split('.')[-1]
-            if extension.lower() != ext.lower():
-                remove.append(file)
-        for file in remove:
-            contents.remove(file)
 
     return contents
 
@@ -349,7 +291,7 @@ def cpu_count():
 
     try:
         cpus = multiprocessing.cpu_count()
-    except (NotImplementedError):
+    except NotImplementedError:
         cpus = 1
 
     return cpus
