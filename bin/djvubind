@@ -237,7 +237,8 @@ class Project:
 
         # Set cetain variables to the proper type
         self.opts['cores'] = int(self.opts['cores'])
-        self.opts['ocr'] = (self.opts['ocr'] == 'True')
+        if isinstance(self.opts['ocr'], str):
+            self.opts['ocr'] = (self.opts['ocr'] == 'True')
 
         # Overwrite or create values for certain command line options
         if opts.no_ocr:
@@ -467,5 +468,3 @@ if __name__ == '__main__':
 
     print('{0} Encoding all information to {1}.'.format(djvubind.utils.color('*', 'green'), proj.out))
     proj.bind()
-
-
