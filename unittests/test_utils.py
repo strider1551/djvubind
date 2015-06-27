@@ -15,7 +15,6 @@
 #       Foundation, Inc.
 
 import os
-import pickle
 import sys
 import unittest
 
@@ -37,49 +36,8 @@ import djvubind.utils
 # Move into the directory of the unittests
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
-class Ocr(unittest.TestCase):
-    """
-    Tests for djvubind/ocr.py
-    """
 
-
-    def test_01_impossible_bounding_box(self):
-        box = djvubind.ocr.BoundingBox()
-        self.assertRaises(ValueError, box.sanity_check)
-
-    def test_02_translate_check(self):
-        with open('data/Ocr.translate_check_in.pickle', 'rb') as data:
-            data_in = pickle.load(data)
-        with open('data/Ocr.translate_check_out.pickle', 'rb') as data:
-            data_out = pickle.load(data)
-        self.assertEqual(data_out, djvubind.ocr.translate(data_in))
-
-    def test_03_non_supported_engine(self):
-        self.assertRaises(ValueError, djvubind.ocr.engine, 'fake-engine')
-
-#    def test_04_hocr_parser(self):
-#        """
-#        Checks whether the parser gives the same output that was given in the
-#        past.  Checks for each supported version of cuneiform hocr output.
-#        """
-#
-#        for filename in djvubind.utils.list_files('data/', 'cuneiform_in'):
-#            version = filename.split('_')[-1]
-#
-#            handle = open(filename, 'r', encoding='utf8')
-#            infile = handle.read()
-#            handle.close()
-#            handle = open('data/cuneiform_out_'+version, 'r', encoding='utf8')
-#            outfile = handle.read()
-#            handle.close()
-#
-#            parser = djvubind.ocr.hocrParser()
-#            parser.parse(infile)
-#
-#            self.assertEqual(outfile, str(parser.boxing))
-
-
-class Utils(unittest.TestCase):
+class TestUtils(unittest.TestCase):
     """
     Tests for djvubind/utils.py
     """
@@ -168,6 +126,5 @@ class Utils(unittest.TestCase):
             tmp = djvubind.utils.list_files(contains="test", extension="jpg")
             self.assertEqual(tmp, ['./test.jpg'])
 
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     unittest.main()
