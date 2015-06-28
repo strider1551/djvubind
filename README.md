@@ -3,6 +3,7 @@
 | master | develop |
 |--------|---------|
 | [![Build Status](https://travis-ci.org/strider1551/djvubind.svg?branch=master)](https://travis-ci.org/strider1551/djvubind) | [![Build Status](https://travis-ci.org/strider1551/djvubind.svg?branch=develop)](https://travis-ci.org/strider1551/djvubind) |
+| [![Coverage Status](https://coveralls.io/repos/strider1551/djvubind/badge.svg?branch=master)](https://coveralls.io/r/strider1551/djvubind?branch=master) | [![Coverage Status](https://coveralls.io/repos/strider1551/djvubind/badge.svg?branch=develop)](https://coveralls.io/r/strider1551/djvubind?branch=develop) |
 
 ## Dependencies
 
@@ -28,7 +29,7 @@ Installation should be as simple as `./setup.py install` on Unix based systems. 
 
 Installation is not necessary, since djvubind can run straight from the unpacked source. This is actually preferred in a Windows environment
 
-N.b., at the moment most distributions are able to have python3 installed but do not use that version by default. If this is the case (and it probably is), explicitly call python3 when installing (e.g. `python3 ./setup.py install`)
+N.b., at the moment most Linux distributions are able to have python3 installed but do not use that version by default. If this is the case (and it probably is), explicitly call python3 when installing (e.g. `python3 ./setup.py install`). Not sure what version of python your machine is defaulted to? Just use `python --version`.
 
 ## Usage
 
