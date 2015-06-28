@@ -1,20 +1,26 @@
 # djvubind
 
+| master | develop |
+|--------|---------|
+| [![Build Status](https://travis-ci.org/strider1551/djvubind.svg?branch=master)](https://travis-ci.org/strider1551/djvubind) | [![Build Status](https://travis-ci.org/strider1551/djvubind.svg?branch=develop)](https://travis-ci.org/strider1551/djvubind) |
+
 ## Dependencies
 
-- [python3](https://www.python.org/)
+### Required
+
+- [python-3.2 or greater](https://www.python.org/)
 - [djvulibre](http://djvu.sourceforge.net/)
 - [imagemagick](http://www.imagemagick.org/)
 - [tesseract](https://code.google.com/p/tesseract-ocr/)
 
 You could forgo having tesseract installed so long as you always use the `--no-ocr` option.
 
-## Recommendations
+### Optional
 
 - [minidjvu](http://minidjvu.sourceforge.net/)
 - [cuneiform](http://cognitiveforms.com/products_and_services/cuneiform)
 
-Minidjvu will get better compression on bitonal images than cjb2 (part of djvulibre) currently can. Some say that cuneiform is a better ocr engine, but in my experience it has issues with buffer overflows. I generally advise against using cuneiform, but if you do and it crashes, tesseract will take over for that image.
+Minidjvu will get better compression on bitonal images than cjb2 (part of djvulibre) currently can. Some say that cuneiform is a better ocr engine, but in my experience it has issues with buffer overflows. I generally advise against using cuneiform. If you choose to use it anyway and it crashes, tesseract will take over for that image.
 
 ## Installation
 
