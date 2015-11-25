@@ -104,6 +104,7 @@ class Project:
         #self.ocr = djvubind.ocr.OCR(self.opts)
         if self.opts['ocr']:
             self.ocr = djvubind.ocr.engine(self.opts['ocr_engine'], self.opts['tesseract_options'])
+        self.ocr.preserve_ocr = self.opts['preserve_ocr']
 
     def add_file(self, filename, type='page'):
         """
@@ -203,6 +204,7 @@ class Project:
                      'title_start_number':1,
                      'title_exclude':{},
                      'title_uppercase':False,
+                     'preserve_ocr':False,
                      'win_path':'C:\\Program Files\\DjVuZone\\DjVuLibre\\'}
 
         # Load the global config file first
@@ -253,6 +255,8 @@ class Project:
             self.opts['title_start'] = opts.title_start
         if opts.title_start_number:
             self.opts['title_start_number'] = opts.title_start_number
+        if opts.preserve_ocr:
+            self.opts['preserve_ocr'] = opts.preserve_ocr
         for special in opts.title_exclude:
             if ':' in special:
                 special = special.split(':')
@@ -338,6 +342,7 @@ if __name__ == '__main__':
     parser = optparse.OptionParser(usage, version=version, description=description)
     parser.set_defaults(quiet=False, verbose=False,
                         no_ocr=False, ocr_engine=None, tesseract_options=None, cuneiform_options=None,
+                        preserve_ocr=False,
                         cover_front='cover_front.jpg', cover_back='cover_back.jpg',
                         metadata='metadata', bookmarks='bookmarks',
                         title_start=False, title_start_number=1, title_exclude=[], title_uppercase=False)
@@ -353,6 +358,7 @@ if __name__ == '__main__':
     parser.add_option("--title-start-number", dest="title_start_number", help="The number for the first page in arabic numerals.")
     parser.add_option("--title-exclude", action="append", dest="title_exclude", help="An image that should be excluded from page numbering.  An alternate title can be provided after a colon (e.g. page_01.tif:cover).")
     parser.add_option("--title-uppercase", action="store_true", dest="title_uppercase", help="Use uppercase roman numerals instead of lowercase.")
+    parser.add_option("--preserve-ocr", action="store_true", dest="preserve_ocr", help="Will not delete ocr files created during processing. Useful for manual corrections to ocr.")
     parser.add_option("-q", "--quiet", action="store_true", dest="quiet")
     parser.add_option("-v", "--verbose", action="store_true", dest="verbose")
     (options, args) = parser.parse_args(sys.argv)

@@ -339,6 +339,8 @@ class Tesseract(object):
         self.version = int(version)
         self.options = options
 
+        self.preserve_ocr = False
+
     def _correct_boxfile(self, boxdata, text):
         """
         Reconciles Tesseract's boxfile data with it's plain text data.
@@ -442,15 +444,24 @@ class Tesseract(object):
             # to have some (un)predictable problems.
             basename += "_" + utils.id_generator()
             tesseractpath = utils.get_executable_path('tesseract')
+            
+            ocr_file = os.path.splitext(filename)[0] + '.hocr'
 
-            cmd = '{0} "{1}" "{2}" {3} hocr'.format(tesseractpath, filename, basename, self.options)
-            utils.execute(cmd)
+            if (os.path.exists(ocr_file)):
+                print('wrn: ocr.Tesseract.analyze(): Pre-existing hocr file for {0}. Using existing data.'.format(filename), file=sys.stderr)
+                with open(ocr_file, 'r') as handle:
+                    text = handle.read()
+            else:
+                cmd = '{0} "{1}" "{2}" {3} hocr'.format(tesseractpath, filename, basename, self.options)
+                utils.execute(cmd)
 
-            with open('{0}.hocr'.format(basename), 'r') as handle:
-                text = handle.read()
+                with open('{0}.hocr'.format(basename), 'r') as handle:
+                    text = handle.read()
 
-            # Clean up excess files.
-            os.remove(basename+'.hocr')
+                if self.preserve_ocr:
+                    shutil.copy2('{0}.hocr'.format(basename), ocr_file)
+                else:
+                    os.remove(basename+'.hocr')
 
             parser = hocrParser()
             parser.parse(text)
