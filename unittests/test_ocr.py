@@ -14,9 +14,11 @@
 #       along with this program; if not, write to the Free Software
 #       Foundation, Inc.
 
+import glob
 import os
 import pickle
 import sys
+import tempfile
 import unittest
 
 try:
@@ -80,6 +82,20 @@ class TestOcr(unittest.TestCase):
             # work. "Dirty" fix is to check the length of the strings, which
             # gives us imperfect confidence that nothing has fallen apart.
             self.assertEqual(len(outfile), len(str(parser.boxing)))
+
+    def test_05_tesseract_versions(self):
+        for version in glob.glob('/opt/tesseract*'):
+            with self.subTest(version=version):
+                executable = version + '/bin/tesseract'
+                djvubind.utils.get_executable_path = mock.Mock(return_value=executable)
+                test_image = os.path.abspath('data/test_image_001.tif')
+                config = os.path.abspath('data/hocr')
+                origin = os.getcwd()
+                with tempfile.TemporaryDirectory() as tempdir, djvubind.utils.ChangeDirectory(tempdir):
+                    os.chdir(tempdir)
+                    engine = djvubind.ocr.Tesseract(config)
+                    engine.analyze(test_image)
+                    os.chdir(origin)
 
 if __name__ == '__main__':
     unittest.main()

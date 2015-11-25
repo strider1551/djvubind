@@ -232,7 +232,7 @@ class hocrParser(HTMLParser):
                 # Get the whole element, not just the tag.
                 element = {}
                 element['complete'] = re.search('{0}(.*?)</span>'.format(self.get_starttag_text()), self.data).group(0)
-                element['text'] = re.search('\'>(.*?)</span', element['complete']).group(1)
+                element['text'] = re.search('[\'"]>(.*?)</span', element['complete']).group(1)
                 element['text'] = re.sub('<[\w\/\.]*>', '', element['text'])
                 element['text'] = utils.replace_html_codes(element['text'])
                 element['positions'] = re.search('bbox ([0-9\s]*)', element['complete']).group(1)
@@ -455,13 +455,20 @@ class Tesseract(object):
                 cmd = '{0} "{1}" "{2}" {3} hocr'.format(tesseractpath, filename, basename, self.options)
                 utils.execute(cmd)
 
-                with open('{0}.hocr'.format(basename), 'r') as handle:
+                if os.path.exists('{0}.hocr'.format(basename)):
+                    hocrfile = '{0}.hocr'.format(basename)
+                elif os.path.exists('{0}.html'.format(basename)):
+                    hocrfile = '{0}.html'.format(basename)
+                else:
+                    raise FileNotFoundError
+
+                with open(hocrfile, 'r') as handle:
                     text = handle.read()
 
                 if self.preserve_ocr:
-                    shutil.copy2('{0}.hocr'.format(basename), ocr_file)
+                    shutil.copy2(hocrfile, ocr_file)
                 else:
-                    os.remove(basename+'.hocr')
+                    os.remove(hocrfile)
 
             parser = hocrParser()
             parser.parse(text)
