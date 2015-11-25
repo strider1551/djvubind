@@ -48,7 +48,7 @@ class Encoder:
         # Make sure that the image is in a format acceptable for c44
         extension = infile.split('.')[-1]
         if extension not in ['pgm', 'ppm', 'jpg', 'jpeg']:
-            utils.execute('convert {0} {1}'.format(infile, 'temp.ppm'))
+            utils.execute('convert "{0}" "{1}"'.format(infile, 'temp.ppm'))
             infile = 'temp.ppm'
 
         # Encode
@@ -78,7 +78,7 @@ class Encoder:
             print("msg: {0}".format(infile), file=sys.stderr)
             print("     This is a bitonal image, but is not in a format accepted by cjb2.", file=sys.stderr)
             print("     Copying to PBM format to be compatible - this may produce a large temporary file!", file=sys.stderr)
-            utils.execute('convert {0} {1}'.format(infile, 'temp.pbm'))
+            utils.execute('convert "{0}" "{1}"'.format(infile, 'temp.pbm'))
             infile = 'temp.pbm'
 
         cmd = 'cjb2 -dpi {0} {1} "{2}" "{3}"'.format(dpi, self.opts['cjb2_options'], infile, outfile)
@@ -114,7 +114,7 @@ class Encoder:
         # Make sure that the image is in a format acceptable for cpaldjvu
         extension = infile.split('.')[-1]
         if extension not in ['ppm']:
-            utils.execute('convert {0} {1}'.format(infile, 'temp.ppm'))
+            utils.execute('convert "{0}" "{1}"'.format(infile, 'temp.ppm'))
             infile = 'temp.ppm'
 
         # Encode
